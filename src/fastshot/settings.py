@@ -1,0 +1,40 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import Enum
+
+from PySide6.QtGui import QColor
+
+
+class CaptureMode(str, Enum):
+    ACTIVE_WINDOW = "active_window"
+    REGION = "region"
+    FULLSCREEN = "fullscreen"
+    WINDOW_UNDER_CURSOR = "window_under_cursor"
+
+
+class Tool(str, Enum):
+    PEN = "pen"
+    LINE = "line"
+    ARROW = "arrow"
+    RECTANGLE = "rectangle"
+    TEXT = "text"
+    MOSAIC = "mosaic"
+
+
+@dataclass
+class CaptureSettings:
+    include_cursor: bool = False
+    delay_seconds: float = 0
+
+
+@dataclass
+class DrawingSettings:
+    color: QColor
+    line_width: int = 3
+    font_family: str = "Segoe UI"
+    font_size: int = 24
+
+    @classmethod
+    def default(cls) -> "DrawingSettings":
+        return cls(color=QColor("#e03131"))
