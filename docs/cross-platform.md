@@ -19,17 +19,16 @@ Windows 是目前主要實作平台。
 
 ### macOS
 
-macOS 尚未完成。PRD 中「macOS 把 alt 換成 opt」只是產品需求，不代表平台層已實作。
+已實作：
 
-macOS 待實作重點：
+- Quartz event tap 全域快捷鍵，攔截並 consume `Option+Shift+A/R/F/W`。
+- 透過 Screen Recording API 檢查並要求螢幕錄製權限。
+- 優先使用 Accessibility `AXFocusedWindow` 擷取焦點視窗；失敗時才從前景程序的 Core Graphics 視窗選擇最大正常視窗，避免 Chrome 連結網址等 transient popup 被誤判為焦點視窗。
+- 使用 Accessibility API hit-test 最小控制項，並將 bounds 限制在游標下視窗內；無效或未包含游標的結果會 fallback 至游標下視窗。
+- 使用目前 `NSCursor` 圖像、hotspot 與游標座標貼入截圖。
+- 共用 Qt 剪貼簿、系統匣、編輯器與存檔流程。
 
-- 全域快捷鍵：需要能攔截並 consume `Option+Shift+...`，避免傳給焦點 app。
-- 螢幕錄製權限：截圖需要 Screen Recording permission。
-- Accessibility 權限：焦點視窗、視窗/控制項選取、真實游標與部分快捷鍵行為可能需要 Accessibility permission。
-- 視窗 bounds：需要對應 Windows DWM bounds 的 macOS window bounds 實作。
-- 控制項 hit-test：Windows UI Automation 需替換成 macOS Accessibility API。
-- 真實游標：需要從 macOS cursor API 取得當下 cursor image 與 hotspot。
-- 剪貼簿：確認 `QClipboard` 寫入影像在 macOS 目標 app 中可正常貼上。
+首次啟動會要求輔助使用權限，首次截圖會要求螢幕錄製權限。若系統設定已變更但功能仍不可用，請完全結束並重新啟動 FastShot。未授予輔助使用權限時，控制項選取與全域快捷鍵不可用；視窗 hit-test 仍會 best-effort fallback。
 
 ### Linux
 
@@ -59,16 +58,11 @@ Linux 尚未作為主要目標。Wayland/X11 差異很大，尤其是全域快�
   - Windows 目前沒有集中 permission flow。
   - macOS 應在啟動或首次使用時檢查 Screen Recording/Accessibility，並提示使用者。
 
-## Suggested macOS Implementation Order
+## macOS Implementation Layout
 
-1. 保留現有 Qt UI，不改 `main_window.py` 與 `canvas.py`，先只替換平台層。
-2. 新增平台 backend 介面，先讓 Windows 現有邏輯搬入 Windows backend。
-3. 實作 macOS 全螢幕與矩形截圖。
-4. 實作 macOS 全域快捷鍵並確認事件不送到焦點 app。
-5. 實作焦點視窗 bounds。
-6. 實作視窗/控制項選取與 hover 框線。
-7. 實作真實游標貼圖。
-8. 補 macOS 手動驗收清單與必要 smoke tests。
+- `platforms/macos.py`: 權限、Core Graphics/Accessibility 視窗查詢、游標與全域快捷鍵。
+- `capture.py`: 保留跨平台擷取流程，僅在平台能力入口委派給 macOS backend。
+- `app.py`: Windows native filter、macOS event tap 與其他平台 fallback 的生命週期管理。
 
 ## Manual Acceptance Checklist
 
@@ -77,6 +71,7 @@ Linux 尚未作為主要目標。Wayland/X11 差異很大，尤其是全域快�
 - 快捷鍵可觸發，且不把按鍵送給焦點 app。
 - 無延遲和有延遲流程都符合：先決定目標，倒數後截即時畫面。
 - 全螢幕、矩形、焦點視窗、選取視窗/控制項都可用。
+- Chrome 等具有 transient popup 的應用程式，焦點視窗擷取不會誤截連結網址或 tooltip。
 - ESC 可取消矩形/視窗選取。
 - 包含游標時顯示當下真實游標。
 - 截圖後影像出現在編輯區左上角。

@@ -45,6 +45,7 @@ class EditorWindow(QMainWindow):
         self.tabs = QTabWidget()
         self.tabs.setTabsClosable(True)
         self.tabs.setUsesScrollButtons(True)
+        self.tabs.tabBar().setExpanding(False)
         self.tabs.currentChanged.connect(self._current_changed)
         self.tabs.tabCloseRequested.connect(self._close_tab)
         self.setCentralWidget(self.tabs)
@@ -556,7 +557,7 @@ class EditorWindow(QMainWindow):
     def _update_tab_overflow(self) -> None:
         tab_bar = self.tabs.tabBar()
         total_width = sum(tab_bar.tabRect(i).width() for i in range(tab_bar.count()))
-        available = max(0, tab_bar.width() - self.tab_menu_button.sizeHint().width() - 12)
+        available = max(0, self.tabs.width() - 8)
         self.tab_menu_button.setVisible(total_width > available and self.tabs.count() > 0)
 
     def _apply_style(self) -> None:
@@ -565,9 +566,11 @@ class EditorWindow(QMainWindow):
             QMainWindow { background: #f8f9fa; }
             QToolBar { background: #ffffff; border: 0; border-bottom: 1px solid #dee2e6; spacing: 4px; }
             QToolButton { padding: 6px; border-radius: 4px; border: 1px solid transparent; }
+            QToolButton::menu-indicator { image: none; width: 0px; }
             QToolButton:hover { background: #e9ecef; }
             QToolButton:checked { background: #e9ecef; border-color: transparent; }
             QTabWidget::pane { border: 0; }
+            QTabWidget::tab-bar { alignment: left; }
             QTabBar::tab { padding: 7px 12px; background: #e9ecef; border: 0; margin-right: 1px; }
             QTabBar::tab:selected { background: #ffffff; border-bottom: 2px solid #1971c2; }
             QScrollArea { background: #ced4da; border: 0; }

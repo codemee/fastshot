@@ -18,7 +18,13 @@
 - `capture.py`
   - 管理所有截圖模式：全螢幕、矩形區域、焦點視窗、選取視窗/控制項。
   - Windows 特有能力集中於此：DWM frame bounds、UI Automation 控制項 hit-test、真實游標 bitmap、`mss`/`ImageGrab` fallback。
+  - macOS 平台能力委派至 `platforms/macos.py`，包含權限、`AXFocusedWindow`、控制項 hit-test、游標與 Quartz event tap。
   - 延遲截圖流程也在此：先決定目標矩形，再顯示倒數 overlay，最後擷取即時畫面。
+
+- `platforms/macos.py`
+  - 使用 Accessibility 的 focused window，避免把同程序的 transient popup 當成焦點視窗。
+  - 控制項 hit-test 結果必須落在游標下視窗內並包含游標座標，否則 fallback 至該視窗。
+  - 管理 Screen Recording／Accessibility 權限、真實游標與可 consume 的全域快捷鍵。
 
 - `main_window.py`
   - 編輯主視窗、toolbar、多頁籤、存檔/另存、縮放、設定面板。
@@ -63,6 +69,6 @@
 目前測試以輕量單元測試和 Qt offscreen smoke 為主：
 
 - `tests/test_document.py`: tab title、dirty/save 狀態、文件 reindex。
-- 手動 smoke 常用 `.venv\Scripts\python.exe`，避免 `uv` cache 權限或執行中 executable lock 影響檢查。
+- 以 `uv run pytest -q` 與 `uv run python -m compileall src tests` 執行跨平台檢查。
 
 重要的 GUI/OS 行為仍需手動驗收，尤其是全域快捷鍵、視窗選取、游標擷取與剪貼簿。
