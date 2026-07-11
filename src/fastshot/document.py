@@ -33,8 +33,7 @@ class ShotDocument:
 
     @property
     def display_title(self) -> str:
-        marker = "*" if self.is_dirty else ""
-        return f"{self.title}{marker}"
+        return self.title
 
     def mark_dirty(self) -> None:
         self.dirty = True

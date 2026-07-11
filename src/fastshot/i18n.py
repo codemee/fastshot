@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import re
+import subprocess
+import sys
 from enum import Enum
 
 from PySide6.QtCore import QLocale, QObject, QSettings, Signal
@@ -108,15 +111,22 @@ class LanguageManager(QObject):
         super().__init__()
         self.settings = settings or QSettings()
         self.system_locale = system_locale or QLocale.system()
+        self.system_languages = (
+            (self.system_locale.uiLanguages() or [self.system_locale.name()])
+            if system_locale is not None
+            else _system_language_names(self.system_locale)
+        )
         self.mode = self._stored_mode()
 
     @property
     def effective_mode(self) -> LanguageMode:
         if self.mode != LanguageMode.SYSTEM:
             return self.mode
-        locale_name = self.system_locale.name().replace("-", "_").lower()
-        traditional_regions = ("zh_tw", "zh_hk", "zh_mo", "zh_hant")
-        return LanguageMode.ZH_TW if locale_name.startswith(traditional_regions) else LanguageMode.EN
+        return (
+            LanguageMode.ZH_TW
+            if any(_is_traditional_chinese(name) for name in self.system_languages)
+            else LanguageMode.EN
+        )
 
     def set_mode(self, mode: LanguageMode) -> None:
         if mode == self.mode:
@@ -136,3 +146,30 @@ class LanguageManager(QObject):
             return LanguageMode(str(value))
         except ValueError:
             return LanguageMode.SYSTEM
+
+
+def _system_language_names(fallback: QLocale) -> list[str]:
+    if sys.platform == "darwin":
+        languages = _read_macos_user_languages()
+        if languages:
+            return languages
+    return fallback.uiLanguages() or [fallback.name()]
+
+
+def _read_macos_user_languages() -> list[str]:
+    try:
+        result = subprocess.run(
+            ["defaults", "read", "-g", "AppleLanguages"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return []
+    return re.findall(r'"([^\"]+)"', result.stdout)
+
+
+def _is_traditional_chinese(language: str) -> bool:
+    normalized = language.replace("-", "_").lower()
+    return normalized.startswith(("zh_tw", "zh_hk", "zh_mo", "zh_hant"))

@@ -12,6 +12,7 @@ def test_dirty_state_transitions():
     assert doc.is_unsaved
     assert doc.is_dirty
     assert doc.can_save
+    assert doc.display_title == "26-07-09-050607"
 
     doc.mark_saved("C:/tmp/example.png")
     assert not doc.is_unsaved
