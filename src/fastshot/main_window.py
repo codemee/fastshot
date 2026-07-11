@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 from fastshot.canvas import ImageCanvas
 from fastshot.document import ShotDocument, make_tab_title
 from fastshot.icons import camera_icon, tool_icon
+from fastshot.i18n import LanguageManager, LanguageMode
 from fastshot.qt_image import pil_to_qimage
 from fastshot.settings import CaptureSettings, DrawingSettings, Tool
 from fastshot.theme import ThemeManager, ThemeMode
@@ -65,11 +66,16 @@ class ArrowSpinBox(QSpinBox):
 class EditorWindow(QMainWindow):
     hiddenByMinimize = Signal()
 
-    def __init__(self, theme_manager: ThemeManager | None = None) -> None:
+    def __init__(
+        self,
+        theme_manager: ThemeManager | None = None,
+        language_manager: LanguageManager | None = None,
+    ) -> None:
         super().__init__()
         from PySide6.QtWidgets import QApplication
 
         self.theme_manager = theme_manager or ThemeManager(QApplication.instance())
+        self.language_manager = language_manager or LanguageManager()
         self.setWindowIcon(camera_icon())
         self.settings = DrawingSettings.default()
         self.capture_settings = CaptureSettings()
@@ -93,6 +99,8 @@ class EditorWindow(QMainWindow):
         self.tabs.setCornerWidget(self.tab_menu_button, Qt.Corner.TopRightCorner)
         self._build_toolbar()
         self.theme_manager.changed.connect(self._theme_changed)
+        self.language_manager.changed.connect(self._language_changed)
+        self._retranslate_ui()
         self._update_title()
         self._update_actions()
         self.resize(1100, 760)
@@ -145,7 +153,7 @@ class EditorWindow(QMainWindow):
         default_path = doc.path or Path.cwd() / f"{doc.title}.png"
         path, selected = QFileDialog.getSaveFileName(
             self,
-            "Save Screenshot",
+            self._tr("save_screenshot"),
             str(default_path),
             "PNG Image (*.png);;JPEG Image (*.jpg *.jpeg)",
             "PNG Image (*.png)" if default_path.suffix.lower() != ".jpg" else "JPEG Image (*.jpg *.jpeg)",
@@ -177,7 +185,7 @@ class EditorWindow(QMainWindow):
             reply = QMessageBox.question(
                 self,
                 "FastShot",
-                "Close FastShot and discard unsaved screenshots?",
+                self._tr("close_discard_all"),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No,
             )
@@ -280,6 +288,10 @@ class EditorWindow(QMainWindow):
         self.theme_action = QAction(self._theme_icon(), "Theme: follow system", self)
         self.theme_action.triggered.connect(self._cycle_theme)
         toolbar.addAction(self.theme_action)
+
+        self.language_action = QAction(tool_icon("language", badge="system"), "Language", self)
+        self.language_action.triggered.connect(self._cycle_language)
+        toolbar.addAction(self.language_action)
         self._refresh_toolbar_icons()
 
     def _tool_action(self, text: str, shortcut: str, tool: Tool, icon_name: str) -> QAction:
@@ -297,7 +309,7 @@ class EditorWindow(QMainWindow):
         layout.setSpacing(8)
 
         width_row = QHBoxLayout()
-        width_row.addWidget(QLabel("Width"))
+        width_row.addWidget(QLabel(self._tr("width")))
         width_slider = QSlider(Qt.Orientation.Horizontal)
         width_slider.setRange(1, 48)
         width_slider.setValue(self.settings.line_width)
@@ -397,7 +409,7 @@ class EditorWindow(QMainWindow):
             swatches.addWidget(button, index // 12, index % 12)
         layout.addLayout(swatches)
 
-        custom_button = QPushButton("Custom...")
+        custom_button = QPushButton(self._tr("custom_color"))
         custom_button.clicked.connect(self._choose_custom_line_color)
         layout.addWidget(custom_button)
 
@@ -414,14 +426,14 @@ class EditorWindow(QMainWindow):
         layout.setSpacing(8)
         row = QHBoxLayout()
         for seconds in (0, 1, 3, 5):
-            button = QPushButton("Off" if seconds == 0 else f"{seconds}s")
+            button = QPushButton(self._tr("off") if seconds == 0 else f"{seconds}s")
             button.setCheckable(True)
             button.setChecked(self.capture_settings.delay_seconds == seconds)
             button.clicked.connect(lambda _checked=False, value=seconds, popup=menu: self._set_delay(value, popup))
             row.addWidget(button)
         layout.addLayout(row)
         custom_row = QHBoxLayout()
-        custom_row.addWidget(QLabel("Custom"))
+        custom_row.addWidget(QLabel(self._tr("custom")))
         custom = ArrowSpinBox()
         custom.setRange(0, 60)
         custom.setSuffix(" s")
@@ -439,6 +451,11 @@ class EditorWindow(QMainWindow):
         index = modes.index(self.theme_manager.mode)
         self.theme_manager.set_mode(modes[(index + 1) % len(modes)])
 
+    def _cycle_language(self) -> None:
+        modes = (LanguageMode.SYSTEM, LanguageMode.ZH_TW, LanguageMode.EN)
+        index = modes.index(self.language_manager.mode)
+        self.language_manager.set_mode(modes[(index + 1) % len(modes)])
+
     def _set_line_width(self, width: int) -> None:
         self.settings.line_width = width
         self.style_action.setIcon(self._style_icon())
@@ -448,13 +465,13 @@ class EditorWindow(QMainWindow):
         self.style_action.setIcon(self._style_icon())
 
     def _choose_custom_line_color(self) -> None:
-        color = QColorDialog.getColor(self.settings.color, self, "Line color")
+        color = QColorDialog.getColor(self.settings.color, self, self._tr("line_color_dialog"))
         if color.isValid():
             self._set_line_color(color)
 
     def _set_delay(self, seconds: float, popup: QMenu | None) -> None:
         self.capture_settings.delay_seconds = seconds
-        self.delay_action.setToolTip(f"Delay: {seconds:g}s")
+        self.delay_action.setToolTip(self._tr("delay_value", seconds=seconds))
         self.delay_action.setIcon(self._delay_icon())
         if popup is not None:
             popup.close()
@@ -462,7 +479,9 @@ class EditorWindow(QMainWindow):
     def _set_include_cursor(self, checked: bool) -> None:
         self.capture_settings.include_cursor = checked
         self.cursor_action.setIcon(tool_icon("cursor", checked=checked, dark=self._is_dark_theme()))
-        self.cursor_action.setToolTip("Include cursor: on" if checked else "Include cursor: off")
+        self.cursor_action.setToolTip(
+            self._tr("include_cursor_on") if checked else self._tr("include_cursor_off")
+        )
 
     def _save_to_path(self, doc: ShotDocument, path: Path) -> None:
         canvas = self._current_canvas()
@@ -472,7 +491,7 @@ class EditorWindow(QMainWindow):
         image = canvas.export_image()
         fmt = "JPG" if suffix in {".jpg", ".jpeg"} else "PNG"
         if not image.save(str(path), fmt):
-            QMessageBox.warning(self, "FastShot", f"Could not save {path}")
+            QMessageBox.warning(self, "FastShot", self._tr("save_failed", path=path))
             return
         doc.mark_saved(path)
         self._refresh_tabs()
@@ -507,7 +526,7 @@ class EditorWindow(QMainWindow):
             reply = QMessageBox.question(
                 self,
                 "FastShot",
-                f"Close {doc.title} and discard changes?",
+                self._tr("close_discard_tab", title=doc.title),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No,
             )
@@ -599,8 +618,69 @@ class EditorWindow(QMainWindow):
 
     def _theme_changed(self, mode: ThemeMode, effective: ThemeMode) -> None:
         self._refresh_toolbar_icons()
-        label = "follow system" if mode == ThemeMode.SYSTEM else mode.value
-        self.theme_action.setToolTip(f"Theme: {label} ({effective.value})")
+        self._retranslate_ui()
+
+    def _language_changed(self, _mode: LanguageMode, _effective: LanguageMode) -> None:
+        self._retranslate_ui()
+        self._refresh_toolbar_icons()
+
+    def _tr(self, key: str, **values) -> str:
+        return self.language_manager.text(key, **values)
+
+    def _tooltip_with_shortcuts(self, label: str, action: QAction) -> str:
+        shortcuts = [
+            shortcut.toString(QKeySequence.SequenceFormat.NativeText)
+            for shortcut in action.shortcuts()
+            if not shortcut.isEmpty()
+        ]
+        if not shortcuts:
+            return label
+        return self._tr("tooltip_shortcut", label=label, shortcut=" / ".join(shortcuts))
+
+    def _retranslate_ui(self) -> None:
+        labels = (
+            (self.pen_action, "pen"),
+            (self.line_action, "line"),
+            (self.arrow_action, "arrow"),
+            (self.rect_action, "rectangle"),
+            (self.text_action, "text"),
+            (self.mosaic_action, "mosaic"),
+            (self.style_action, "line_color"),
+            (self.undo_action, "undo"),
+            (self.copy_action, "copy"),
+            (self.save_action, "save"),
+            (self.save_as_action, "save_as"),
+            (self.zoom_in_action, "zoom_in"),
+            (self.zoom_out_action, "zoom_out"),
+            (self.zoom_reset_action, "reset_zoom"),
+            (self.delay_action, "delay"),
+        )
+        for action, key in labels:
+            label = self._tr(key)
+            action.setText(label)
+            action.setToolTip(self._tooltip_with_shortcuts(label, action))
+        self.tab_menu_button.setToolTip(self._tr("open_tabs"))
+        self.cursor_action.setText(self._tr("include_cursor"))
+        self._set_include_cursor(self.capture_settings.include_cursor)
+        self._set_delay(self.capture_settings.delay_seconds, None)
+        mode = self.theme_manager.mode.value
+        effective = self.theme_manager.effective_mode.value
+        self.theme_action.setToolTip(
+            self._tr(
+                "theme",
+                mode=self._tr(f"theme_{mode}"),
+                effective=self._tr(f"theme_{effective}"),
+            )
+        )
+        language_mode = self.language_manager.mode.value
+        language_effective = self.language_manager.effective_mode.value
+        self.language_action.setToolTip(
+            self._tr(
+                "language",
+                mode=self._tr(f"language_{language_mode}"),
+                effective=self._tr(f"language_{language_effective}"),
+            )
+        )
 
     def _is_dark_theme(self) -> bool:
         return self.theme_manager.effective_mode == ThemeMode.DARK
@@ -626,6 +706,9 @@ class EditorWindow(QMainWindow):
         self.cursor_action.setIcon(tool_icon("cursor", checked=self.capture_settings.include_cursor, dark=dark))
         self.delay_action.setIcon(self._delay_icon())
         self.theme_action.setIcon(self._theme_icon())
+        self.language_action.setIcon(
+            tool_icon("language", badge=self.language_manager.mode.value, dark=dark)
+        )
 
     def _toolbar_anchor(self, action: QAction) -> QPoint:
         for toolbar in self.findChildren(QToolBar):

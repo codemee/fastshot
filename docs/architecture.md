@@ -49,6 +49,11 @@
   - `ThemeManager` 在 application 層建立並注入 `EditorWindow`，統一管理 palette、stylesheet 與依主題重繪的工具列圖示。
   - 淺色與深色面板使用對應色票但維持相同控制項結構；數值欄位由 `ArrowSpinBox` 提供跨平台一致且可連續操作的上下按鈕。
 
+- `i18n.py`
+  - 管理跟隨系統、繁體中文與英文三種語言模式，使用 `QLocale` 判斷系統語言並透過 `QSettings` 持久化。
+  - 可見字串集中在翻譯表，`LanguageManager.changed` 會觸發主視窗與系統匣即時更新。
+  - 工具列 tooltip 由翻譯文字與 `QAction` 快捷鍵動態組合，避免翻譯表重複維護按鍵名稱。
+
 - `qt_image.py`
   - Pillow 與 Qt image/pixmap 轉換 helper。
 

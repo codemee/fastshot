@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon
 
 from fastshot.capture import CaptureService
 from fastshot.icons import camera_icon
+from fastshot.i18n import LanguageManager
 from fastshot.main_window import EditorWindow
 from fastshot.settings import CaptureMode
 from fastshot.theme import ThemeManager
@@ -92,11 +93,13 @@ class FastShotApplication(QObject):
         self.app.setOrganizationName("FastShot")
         self.app.setQuitOnLastWindowClosed(False)
         self.theme_manager = ThemeManager(self.app)
+        self.language_manager = LanguageManager()
         self.capture = CaptureService()
-        self.window = EditorWindow(self.theme_manager)
+        self.window = EditorWindow(self.theme_manager, self.language_manager)
         self.bridge = HotkeyBridge()
         self.bridge.captureRequested.connect(self.capture_mode)
         self.tray = self._build_tray()
+        self.language_manager.changed.connect(self._language_changed)
         self._hotkey_handles: list[object] = []
         self._native_hotkey_filter: WindowsHotkeyFilter | None = None
         self._mac_hotkey_listener = None
@@ -130,7 +133,11 @@ class FastShotApplication(QObject):
                 image = self.capture.capture(mode, self.window.capture_settings)
             except Exception as exc:  # pragma: no cover - UI guard
                 traceback.print_exc()
-                QMessageBox.warning(self.window, "FastShot", f"Capture failed: {exc}")
+                QMessageBox.warning(
+                    self.window,
+                    "FastShot",
+                    self.language_manager.text("capture_failed", error=exc),
+                )
                 self._capture_in_progress = False
                 return
             if image is None:
@@ -146,12 +153,15 @@ class FastShotApplication(QObject):
         tray = QSystemTrayIcon(camera_icon(), self.app)
         tray.setToolTip("FastShot")
         menu = QMenu()
-        exit_action = QAction("Exit", menu)
-        exit_action.triggered.connect(self.quit)
-        menu.addAction(exit_action)
+        self.exit_action = QAction(self.language_manager.text("exit"), menu)
+        self.exit_action.triggered.connect(self.quit)
+        menu.addAction(self.exit_action)
         tray.setContextMenu(menu)
         tray.activated.connect(self._tray_activated)
         return tray
+
+    def _language_changed(self, _mode, _effective) -> None:
+        self.exit_action.setText(self.language_manager.text("exit"))
 
     def _tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
         if reason == QSystemTrayIcon.ActivationReason.DoubleClick:

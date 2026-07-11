@@ -202,6 +202,22 @@ def tool_icon(
                 ((10, 22), (8, 24)),
             ):
                 painter.drawLine(*start, *end)
+    elif name == "language":
+        painter.setPen(base_ink)
+        font = painter.font()
+        font.setBold(True)
+        if badge == "system":
+            font.setPointSize(8)
+            painter.setFont(font)
+            painter.drawText(QRect(2, 2, 16, 15), Qt.AlignmentFlag.AlignCenter, "文")
+            painter.drawText(QRect(15, 15, 15, 15), Qt.AlignmentFlag.AlignCenter, "A")
+            painter.setPen(QPen(base_ink, 1.25, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            painter.drawLine(8, 25, 25, 8)
+        else:
+            font.setPointSize(11 if badge == "zh_TW" else 10)
+            painter.setFont(font)
+            label = "中" if badge == "zh_TW" else "En"
+            painter.drawText(QRect(1, 3, 30, 26), Qt.AlignmentFlag.AlignCenter, label)
 
     painter.end()
     return QIcon(pixmap)
