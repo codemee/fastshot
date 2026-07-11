@@ -31,13 +31,17 @@ from fastshot.document import ShotDocument, make_tab_title
 from fastshot.icons import camera_icon, tool_icon
 from fastshot.qt_image import pil_to_qimage
 from fastshot.settings import CaptureSettings, DrawingSettings, Tool
+from fastshot.theme import ThemeManager, ThemeMode
 
 
 class EditorWindow(QMainWindow):
     hiddenByMinimize = Signal()
 
-    def __init__(self) -> None:
+    def __init__(self, theme_manager: ThemeManager | None = None) -> None:
         super().__init__()
+        from PySide6.QtWidgets import QApplication
+
+        self.theme_manager = theme_manager or ThemeManager(QApplication.instance())
         self.setWindowIcon(camera_icon())
         self.settings = DrawingSettings.default()
         self.capture_settings = CaptureSettings()
@@ -60,7 +64,7 @@ class EditorWindow(QMainWindow):
         self.tab_menu_button.hide()
         self.tabs.setCornerWidget(self.tab_menu_button, Qt.Corner.TopRightCorner)
         self._build_toolbar()
-        self._apply_style()
+        self.theme_manager.changed.connect(self._theme_changed)
         self._update_title()
         self._update_actions()
         self.resize(1100, 760)
@@ -244,6 +248,12 @@ class EditorWindow(QMainWindow):
         self.delay_action.triggered.connect(self._show_delay_panel)
         toolbar.addAction(self.delay_action)
 
+        toolbar.addSeparator()
+        self.theme_action = QAction(self._theme_icon(), "Theme: follow system", self)
+        self.theme_action.triggered.connect(self._cycle_theme)
+        toolbar.addAction(self.theme_action)
+        self._refresh_toolbar_icons()
+
     def _tool_action(self, text: str, shortcut: str, tool: Tool, icon_name: str) -> QAction:
         action = QAction(tool_icon(icon_name), text, self)
         action.setCheckable(True)
@@ -396,6 +406,11 @@ class EditorWindow(QMainWindow):
         menu.addAction(action)
         menu.exec(self.mapToGlobal(self._toolbar_anchor(self.delay_action)))
 
+    def _cycle_theme(self) -> None:
+        modes = (ThemeMode.SYSTEM, ThemeMode.LIGHT, ThemeMode.DARK)
+        index = modes.index(self.theme_manager.mode)
+        self.theme_manager.set_mode(modes[(index + 1) % len(modes)])
+
     def _set_line_width(self, width: int) -> None:
         self.settings.line_width = width
         self.style_action.setIcon(self._style_icon())
@@ -418,7 +433,7 @@ class EditorWindow(QMainWindow):
 
     def _set_include_cursor(self, checked: bool) -> None:
         self.capture_settings.include_cursor = checked
-        self.cursor_action.setIcon(tool_icon("cursor", checked=checked))
+        self.cursor_action.setIcon(tool_icon("cursor", checked=checked, dark=self._is_dark_theme()))
         self.cursor_action.setToolTip("Include cursor: on" if checked else "Include cursor: off")
 
     def _save_to_path(self, doc: ShotDocument, path: Path) -> None:
@@ -538,13 +553,51 @@ class EditorWindow(QMainWindow):
         return any(doc.is_dirty for doc in self.documents.values())
 
     def _style_icon(self) -> QIcon:
-        return tool_icon("style", self.settings.color, self.settings.line_width)
+        return tool_icon("style", self.settings.color, self.settings.line_width, dark=self._is_dark_theme())
 
     def _delay_icon(self) -> QIcon:
         seconds = self.capture_settings.delay_seconds
         if seconds <= 0:
-            return tool_icon("delay", badge="off")
-        return tool_icon("delay", badge=f"{seconds:g}")
+            return tool_icon("delay", badge="off", dark=self._is_dark_theme())
+        return tool_icon("delay", badge=f"{seconds:g}", dark=self._is_dark_theme())
+
+    def _theme_icon(self) -> QIcon:
+        badge = (
+            "system"
+            if self.theme_manager.mode == ThemeMode.SYSTEM
+            else self.theme_manager.effective_mode.value
+        )
+        return tool_icon("theme", badge=badge, dark=self._is_dark_theme())
+
+    def _theme_changed(self, mode: ThemeMode, effective: ThemeMode) -> None:
+        self._refresh_toolbar_icons()
+        label = "follow system" if mode == ThemeMode.SYSTEM else mode.value
+        self.theme_action.setToolTip(f"Theme: {label} ({effective.value})")
+
+    def _is_dark_theme(self) -> bool:
+        return self.theme_manager.effective_mode == ThemeMode.DARK
+
+    def _refresh_toolbar_icons(self) -> None:
+        dark = self._is_dark_theme()
+        for action, name in (
+            (self.pen_action, "pen"),
+            (self.line_action, "line"),
+            (self.arrow_action, "arrow"),
+            (self.rect_action, "rectangle"),
+            (self.text_action, "text"),
+            (self.mosaic_action, "mosaic"),
+            (self.undo_action, "undo"),
+            (self.copy_action, "copy"),
+            (self.save_action, "save"),
+            (self.save_as_action, "save_as"),
+            (self.zoom_in_action, "zoom_in"),
+            (self.zoom_out_action, "zoom_out"),
+        ):
+            action.setIcon(tool_icon(name, dark=dark))
+        self.style_action.setIcon(self._style_icon())
+        self.cursor_action.setIcon(tool_icon("cursor", checked=self.capture_settings.include_cursor, dark=dark))
+        self.delay_action.setIcon(self._delay_icon())
+        self.theme_action.setIcon(self._theme_icon())
 
     def _toolbar_anchor(self, action: QAction) -> QPoint:
         for toolbar in self.findChildren(QToolBar):
@@ -559,23 +612,3 @@ class EditorWindow(QMainWindow):
         total_width = sum(tab_bar.tabRect(i).width() for i in range(tab_bar.count()))
         available = max(0, self.tabs.width() - 8)
         self.tab_menu_button.setVisible(total_width > available and self.tabs.count() > 0)
-
-    def _apply_style(self) -> None:
-        self.setStyleSheet(
-            """
-            QMainWindow { background: #f8f9fa; }
-            QToolBar { background: #ffffff; border: 0; border-bottom: 1px solid #dee2e6; spacing: 4px; }
-            QToolButton { padding: 6px; border-radius: 4px; border: 1px solid transparent; }
-            QToolButton::menu-indicator { image: none; width: 0px; }
-            QToolButton:hover { background: #e9ecef; }
-            QToolButton:checked { background: #e9ecef; border-color: transparent; }
-            QTabWidget::pane { border: 0; }
-            QTabWidget::tab-bar { alignment: left; }
-            QTabBar::tab { padding: 7px 12px; background: #e9ecef; border: 0; margin-right: 1px; }
-            QTabBar::tab:selected { background: #ffffff; border-bottom: 2px solid #1971c2; }
-            QScrollArea { background: #ced4da; border: 0; }
-            QMenu { background: #ffffff; border: 1px solid #ced4da; }
-            QMenu::item { padding: 6px 18px; }
-            QMenu::item:selected { background: #e7f5ff; }
-            """
-        )

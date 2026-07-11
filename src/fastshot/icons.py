@@ -5,6 +5,7 @@ from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QPolygon,
 
 
 INK = QColor("#5c6269")
+DARK_INK = QColor("#c7cbd1")
 BLUE = QColor("#1971c2")
 GREEN = QColor("#2f9e44")
 RED = QColor("#e03131")
@@ -33,18 +34,20 @@ def tool_icon(
     width: int = 3,
     checked: bool = False,
     badge: str | None = None,
+    dark: bool = False,
 ) -> QIcon:
     pixmap = QPixmap(32, 32)
     pixmap.fill(Qt.GlobalColor.transparent)
     painter = _painter(pixmap)
-    ink = color or INK
+    base_ink = DARK_INK if dark else INK
+    ink = color or base_ink
     icon_width = 1.45 if name != "style" else max(1.3, min(5.0, width * 0.45))
     pen = QPen(ink, icon_width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
     painter.setPen(pen)
     painter.setBrush(Qt.BrushStyle.NoBrush)
 
     if name == "pen":
-        painter.setPen(QPen(INK, 1.2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+        painter.setPen(QPen(base_ink, 1.2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawPolygon(QPolygon([QPoint(8, 24), QPoint(12, 28), QPoint(25, 15), QPoint(21, 11)]))
         painter.drawLine(19, 13, 23, 17)
@@ -67,14 +70,14 @@ def tool_icon(
         painter.setPen(QPen(INK, 0.9))
         for y in (8, 15, 22):
             for x in (7, 14, 21):
-                painter.fillRect(x, y, 5, 5, QColor("#495057") if (x + y) % 2 else QColor("#adb5bd"))
+                painter.fillRect(x, y, 5, 5, QColor("#9aa0a6") if dark and (x + y) % 2 else QColor("#495057") if (x + y) % 2 else QColor("#adb5bd"))
     elif name == "style":
         painter.drawLine(7, 23, 25, 11)
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(ink)
         painter.drawEllipse(20, 20, 7, 7)
     elif name == "undo":
-        painter.setPen(QPen(INK, 1.45, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+        painter.setPen(QPen(base_ink, 1.45, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
         path = QPainterPath(QPoint(12, 12))
         path.cubicTo(17, 8, 25, 10, 26, 17)
         path.cubicTo(27, 24, 18, 28, 11, 23)
@@ -86,7 +89,7 @@ def tool_icon(
         painter.drawRoundedRect(11, 7, 13, 16, 2, 2)
         painter.drawRoundedRect(7, 11, 13, 16, 2, 2)
     elif name == "save":
-        painter.setPen(QPen(INK, 1.35, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+        painter.setPen(QPen(base_ink, 1.35, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
         painter.drawRoundedRect(7, 6, 18, 20, 2, 2)
         painter.drawLine(10, 6, 22, 6)
         painter.drawLine(22, 6, 25, 9)
@@ -95,7 +98,7 @@ def tool_icon(
         painter.drawRoundedRect(11, 18, 10, 6, 1, 1)
         painter.drawLine(13, 21, 19, 21)
     elif name == "save_as":
-        painter.setPen(QPen(INK, 1.25, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+        painter.setPen(QPen(base_ink, 1.25, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawRoundedRect(9, 5, 15, 17, 2, 2)
         painter.drawLine(12, 5, 21, 5)
@@ -103,10 +106,10 @@ def tool_icon(
         painter.drawRect(13, 7, 7, 4)
         painter.drawRoundedRect(13, 16, 7, 4, 1, 1)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor("#ffffff"))
+        painter.setBrush(QColor("#252629") if dark else QColor("#ffffff"))
         painter.drawRoundedRect(5, 9, 17, 19, 3, 3)
         painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.setPen(QPen(INK, 1.25, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+        painter.setPen(QPen(base_ink, 1.25, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
         painter.drawRoundedRect(6, 10, 15, 17, 2, 2)
         painter.drawLine(9, 10, 18, 10)
         painter.drawLine(18, 10, 21, 13)
@@ -125,8 +128,8 @@ def tool_icon(
         path.lineTo(16, 20)
         path.lineTo(13, 27)
         path.lineTo(9, 6)
-        painter.setBrush(BLUE if checked else QColor("#ffffff"))
-        painter.setPen(QPen(INK, 1.35))
+        painter.setBrush(BLUE if checked else QColor("#252629") if dark else QColor("#ffffff"))
+        painter.setPen(QPen(base_ink, 1.35))
         painter.drawPath(path)
         if checked:
             check_pen = QPen(GREEN, 1.8)
@@ -153,6 +156,48 @@ def tool_icon(
             font.setBold(True)
             painter.setFont(font)
             painter.drawText(QRect(19, 19, 12, 12), Qt.AlignmentFlag.AlignCenter, badge)
+    elif name == "theme":
+        if badge == "system":
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.setPen(QPen(base_ink, 1.2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            painter.drawEllipse(6, 5, 8, 8)
+            for start, end in (
+                ((10, 2), (10, 4)),
+                ((10, 14), (10, 16)),
+                ((3, 9), (5, 9)),
+                ((15, 9), (17, 9)),
+                ((5, 4), (6, 5)),
+                ((14, 13), (15, 14)),
+            ):
+                painter.drawLine(*start, *end)
+            painter.setBrush(base_ink)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(18, 18, 10, 11)
+            painter.setBrush(QColor("#252629") if dark else QColor("#ffffff"))
+            painter.drawEllipse(22, 16, 9, 10)
+            painter.setPen(QPen(base_ink, 1.35, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            painter.drawLine(7, 25, 25, 7)
+        elif badge == "dark":
+            painter.setBrush(base_ink)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(7, 6, 19, 20)
+            painter.setBrush(QColor("#252629"))
+            painter.drawEllipse(13, 3, 17, 18)
+        else:
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.setPen(QPen(base_ink, 1.35, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            painter.drawEllipse(11, 11, 10, 10)
+            for start, end in (
+                ((16, 5), (16, 8)),
+                ((16, 24), (16, 27)),
+                ((5, 16), (8, 16)),
+                ((24, 16), (27, 16)),
+                ((8, 8), (10, 10)),
+                ((22, 22), (24, 24)),
+                ((24, 8), (22, 10)),
+                ((10, 22), (8, 24)),
+            ):
+                painter.drawLine(*start, *end)
 
     painter.end()
     return QIcon(pixmap)

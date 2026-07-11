@@ -44,6 +44,10 @@
 - `settings.py`
   - `CaptureMode`、`Tool`、`CaptureSettings`、`DrawingSettings`。
 
+- `theme.py`
+  - 管理跟隨系統、淺色與深色三種模式，透過 `QSettings` 持久化，並在系統配色變更時即時套用。
+  - `ThemeManager` 在 application 層建立並注入 `EditorWindow`，統一管理 palette、stylesheet 與依主題重繪的工具列圖示。
+
 - `qt_image.py`
   - Pillow 與 Qt image/pixmap 轉換 helper。
 

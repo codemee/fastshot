@@ -13,6 +13,7 @@ from fastshot.capture import CaptureService
 from fastshot.icons import camera_icon
 from fastshot.main_window import EditorWindow
 from fastshot.settings import CaptureMode
+from fastshot.theme import ThemeManager
 
 
 class MSG(ctypes.Structure):
@@ -88,9 +89,11 @@ class FastShotApplication(QObject):
         super().__init__()
         self.app = app
         self.app.setApplicationName("FastShot")
+        self.app.setOrganizationName("FastShot")
         self.app.setQuitOnLastWindowClosed(False)
+        self.theme_manager = ThemeManager(self.app)
         self.capture = CaptureService()
-        self.window = EditorWindow()
+        self.window = EditorWindow(self.theme_manager)
         self.bridge = HotkeyBridge()
         self.bridge.captureRequested.connect(self.capture_mode)
         self.tray = self._build_tray()
