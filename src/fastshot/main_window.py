@@ -34,6 +34,34 @@ from fastshot.settings import CaptureSettings, DrawingSettings, Tool
 from fastshot.theme import ThemeManager, ThemeMode
 
 
+class ArrowSpinBox(QSpinBox):
+    BUTTON_WIDTH = 20
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
+        self.lineEdit().setTextMargins(0, 0, self.BUTTON_WIDTH, 0)
+        self.up_button = self._arrow_button(Qt.ArrowType.UpArrow, self.stepUp)
+        self.down_button = self._arrow_button(Qt.ArrowType.DownArrow, self.stepDown)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        half = self.height() // 2
+        left = self.width() - self.BUTTON_WIDTH
+        self.up_button.setGeometry(left, 0, self.BUTTON_WIDTH, half)
+        self.down_button.setGeometry(left, half, self.BUTTON_WIDTH, self.height() - half)
+
+    def _arrow_button(self, arrow: Qt.ArrowType, callback) -> QToolButton:
+        button = QToolButton(self)
+        button.setProperty("spinArrow", True)
+        button.setArrowType(arrow)
+        button.setAutoRepeat(True)
+        button.setAutoRepeatDelay(350)
+        button.setAutoRepeatInterval(80)
+        button.clicked.connect(callback)
+        return button
+
+
 class EditorWindow(QMainWindow):
     hiddenByMinimize = Signal()
 
@@ -273,7 +301,7 @@ class EditorWindow(QMainWindow):
         width_slider = QSlider(Qt.Orientation.Horizontal)
         width_slider.setRange(1, 48)
         width_slider.setValue(self.settings.line_width)
-        width_spin = QSpinBox()
+        width_spin = ArrowSpinBox()
         width_spin.setRange(1, 48)
         width_spin.setValue(self.settings.line_width)
         width_slider.valueChanged.connect(width_spin.setValue)
@@ -394,7 +422,7 @@ class EditorWindow(QMainWindow):
         layout.addLayout(row)
         custom_row = QHBoxLayout()
         custom_row.addWidget(QLabel("Custom"))
-        custom = QSpinBox()
+        custom = ArrowSpinBox()
         custom.setRange(0, 60)
         custom.setSuffix(" s")
         custom.setValue(round(self.capture_settings.delay_seconds))

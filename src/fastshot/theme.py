@@ -110,6 +110,43 @@ def _stylesheet(mode: ThemeMode) -> str:
             QMenu { background: #292b2f; border: 1px solid #4b4f54; }
             QMenu::item { padding: 6px 18px; }
             QMenu::item:selected { background: #3c4043; }
+            QMenu QWidget { color: #e8eaed; }
+            QMenu QPushButton {
+                background: #3c4043;
+                color: #f1f3f4;
+                border: 1px solid #5f6368;
+                border-radius: 3px;
+                padding: 4px 10px;
+            }
+            QMenu QPushButton:hover { background: #4b4f54; border-color: #8ab4f8; }
+            QMenu QPushButton:checked { background: #1976c9; color: #ffffff; border-color: #5da9e9; }
+            QSpinBox {
+                background: #3c4043;
+                color: #f1f3f4;
+                border: 1px solid #5f6368;
+                border-radius: 3px;
+                padding: 3px 22px 3px 7px;
+                selection-background-color: #3b82c4;
+            }
+            QSpinBox:hover, QSpinBox:focus { border-color: #8ab4f8; }
+            QSpinBox:disabled { background: #303134; color: #9aa0a6; border-color: #4b4f54; }
+            QSpinBox QToolButton[spinArrow="true"] {
+                background: #4b4f54;
+                border: 0;
+                border-left: 1px solid #5f6368;
+                border-radius: 0;
+                padding: 0;
+            }
+            QSpinBox QToolButton[spinArrow="true"]:hover { background: #5f6368; }
+            QSlider::groove:horizontal { height: 4px; background: #5f6368; border-radius: 2px; }
+            QSlider::sub-page:horizontal { background: #5da9e9; border-radius: 2px; }
+            QSlider::handle:horizontal {
+                background: #e8eaed;
+                border: 1px solid #5f6368;
+                width: 14px;
+                margin: -5px 0;
+                border-radius: 7px;
+            }
         """
     return """
         QMainWindow { background: #f8f9fa; }
@@ -125,4 +162,40 @@ def _stylesheet(mode: ThemeMode) -> str:
         QMenu { background: #ffffff; border: 1px solid #ced4da; }
         QMenu::item { padding: 6px 18px; }
         QMenu::item:selected { background: #e7f5ff; }
+        QMenu QWidget { color: #343a40; }
+        QMenu QPushButton {
+            background: #ffffff;
+            color: #343a40;
+            border: 1px solid #ced4da;
+            border-radius: 3px;
+            padding: 4px 10px;
+        }
+        QMenu QPushButton:hover { background: #f1f3f5; border-color: #74c0fc; }
+        QMenu QPushButton:checked { background: #1971c2; color: #ffffff; border-color: #1971c2; }
+        QSpinBox {
+            background: #ffffff;
+            color: #343a40;
+            border: 1px solid #adb5bd;
+            border-radius: 3px;
+            padding: 3px 22px 3px 7px;
+            selection-background-color: #1971c2;
+        }
+        QSpinBox:hover, QSpinBox:focus { border-color: #339af0; }
+        QSpinBox QToolButton[spinArrow="true"] {
+            background: #f1f3f5;
+            border: 0;
+            border-left: 1px solid #adb5bd;
+            border-radius: 0;
+            padding: 0;
+        }
+        QSpinBox QToolButton[spinArrow="true"]:hover { background: #e7f5ff; }
+        QSlider::groove:horizontal { height: 4px; background: #ced4da; border-radius: 2px; }
+        QSlider::sub-page:horizontal { background: #339af0; border-radius: 2px; }
+        QSlider::handle:horizontal {
+            background: #ffffff;
+            border: 1px solid #868e96;
+            width: 14px;
+            margin: -5px 0;
+            border-radius: 7px;
+        }
     """

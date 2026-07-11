@@ -48,3 +48,16 @@ def test_explicit_theme_cycles_in_expected_order(qt_app, tmp_path):
     assert manager.mode == ThemeMode.DARK
     window._cycle_theme()
     assert manager.mode == ThemeMode.SYSTEM
+
+
+def test_arrow_spinbox_buttons_change_value(qt_app):
+    from fastshot.main_window import ArrowSpinBox
+
+    spinbox = ArrowSpinBox()
+    spinbox.setRange(0, 10)
+    spinbox.setValue(5)
+
+    spinbox.up_button.click()
+    assert spinbox.value() == 6
+    spinbox.down_button.click()
+    assert spinbox.value() == 5
