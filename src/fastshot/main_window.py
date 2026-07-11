@@ -3,9 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from PIL import Image
-from PySide6.QtCore import QPoint, Qt, Signal
-from PySide6.QtGui import QAction, QActionGroup, QColor, QKeySequence
+from PySide6.QtCore import QPoint, QSize, Qt, Signal
+from PySide6.QtGui import QAction, QActionGroup, QColor, QIcon, QKeySequence, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
+    QAbstractButton,
     QColorDialog,
     QFileDialog,
     QGridLayout,
@@ -18,6 +19,8 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QSlider,
     QSpinBox,
+    QStyle,
+    QTabBar,
     QTabWidget,
     QToolButton,
     QToolBar,
@@ -61,6 +64,37 @@ class ArrowSpinBox(QSpinBox):
         button.setAutoRepeatInterval(80)
         button.clicked.connect(callback)
         return button
+
+
+class TabStatusWidget(QWidget):
+    def __init__(self, close_button: QWidget | None = None) -> None:
+        super().__init__()
+        self.has_close_button = close_button is not None
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(6, 0, 14, 0)
+        layout.setSpacing(5)
+        self.marker = QLabel()
+        self.marker.setFixedSize(7, 7)
+        self.marker.setStyleSheet("background: #e03131; border: 0;")
+        layout.addWidget(self.marker, 0, Qt.AlignmentFlag.AlignVCenter)
+        self.close_button = close_button if isinstance(close_button, QAbstractButton) else None
+        if close_button is not None:
+            close_button.setParent(self)
+            layout.addWidget(close_button, 0, Qt.AlignmentFlag.AlignVCenter)
+
+    def set_dirty(self, dirty: bool) -> None:
+        self.marker.setVisible(dirty)
+        self.setVisible(dirty or self.has_close_button)
+
+
+class TabCloseWidget(QWidget):
+    def __init__(self, close_button: QAbstractButton) -> None:
+        super().__init__()
+        self.close_button = close_button
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(8, 0, 4, 0)
+        close_button.setParent(self)
+        layout.addWidget(close_button, 0, Qt.AlignmentFlag.AlignVCenter)
 
 
 class EditorWindow(QMainWindow):
@@ -114,7 +148,8 @@ class EditorWindow(QMainWindow):
         area = QScrollArea()
         area.setWidget(canvas)
         area.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
-        index = self.tabs.addTab(area, title + "*")
+        index = self.tabs.addTab(area, title)
+        self._ensure_tab_status_widget(index)
         self.documents[index] = ShotDocument(title=title, image=canvas)
         self.tabs.setCurrentIndex(index)
         self.showNormal()
@@ -560,6 +595,7 @@ class EditorWindow(QMainWindow):
             doc = self.documents.get(i)
             if doc:
                 self.tabs.setTabText(i, doc.display_title)
+                self._ensure_tab_status_widget(i).set_dirty(doc.is_dirty)
         self.tab_menu.clear()
         for i in range(self.tabs.count()):
             action = self.tab_menu.addAction(self.tabs.tabText(i))
@@ -569,6 +605,76 @@ class EditorWindow(QMainWindow):
         self._update_title()
         self._update_actions()
         self._update_tab_overflow()
+
+    def _ensure_tab_status_widget(self, index: int) -> TabStatusWidget:
+        tab_bar = self.tabs.tabBar()
+        close_side = QTabBar.ButtonPosition(
+            tab_bar.style().styleHint(QStyle.StyleHint.SH_TabBar_CloseButtonPosition)
+        )
+        if close_side == QTabBar.ButtonPosition.LeftSide:
+            left_button = tab_bar.tabButton(index, QTabBar.ButtonPosition.LeftSide)
+            if isinstance(left_button, TabCloseWidget):
+                self._style_tab_close_button(left_button.close_button)
+            else:
+                close_button = self._new_tab_close_button()
+                close_widget = TabCloseWidget(close_button)
+                close_button.clicked.connect(
+                    lambda _checked=False, widget=close_widget: self._close_tab_widget(widget)
+                )
+                tab_bar.setTabButton(
+                    index,
+                    QTabBar.ButtonPosition.LeftSide,
+                    close_widget,
+                )
+
+        button_side = QTabBar.ButtonPosition.RightSide
+        current = tab_bar.tabButton(index, button_side)
+        if isinstance(current, TabStatusWidget):
+            if current.close_button is not None:
+                self._style_tab_close_button(current.close_button)
+            return current
+        close_button = self._new_tab_close_button() if close_side == button_side else None
+        status = TabStatusWidget(close_button)
+        if close_button is not None:
+            close_button.clicked.connect(
+                lambda _checked=False, widget=status: self._close_tab_widget(widget)
+            )
+        tab_bar.setTabButton(index, button_side, status)
+        return status
+
+    def _new_tab_close_button(self) -> QToolButton:
+        button = QToolButton()
+        button.setAutoRaise(True)
+        button.setFixedSize(18, 18)
+        button.setStyleSheet("padding: 0; border: 0; background: transparent;")
+        self._style_tab_close_button(button)
+        return button
+
+    def _close_tab_widget(self, widget: QWidget) -> None:
+        tab_bar = self.tabs.tabBar()
+        for index in range(tab_bar.count()):
+            if widget in (
+                tab_bar.tabButton(index, QTabBar.ButtonPosition.LeftSide),
+                tab_bar.tabButton(index, QTabBar.ButtonPosition.RightSide),
+            ):
+                self._close_tab(index)
+                return
+
+    def _style_tab_close_button(self, button: QAbstractButton) -> None:
+        button.setIcon(self._tab_close_icon())
+        button.setIconSize(QSize(11, 11))
+
+    def _tab_close_icon(self) -> QIcon:
+        pixmap = QPixmap(12, 12)
+        pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        color = QColor("#ced4da") if self._is_dark_theme() else QColor("#495057")
+        painter.setPen(QPen(color, 1.8, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        painter.drawLine(3, 3, 9, 9)
+        painter.drawLine(9, 3, 3, 9)
+        painter.end()
+        return QIcon(pixmap)
 
     def _update_title(self) -> None:
         doc = self._current_doc()
@@ -709,6 +815,8 @@ class EditorWindow(QMainWindow):
         self.language_action.setIcon(
             tool_icon("language", badge=self.language_manager.mode.value, dark=dark)
         )
+        for index in range(self.tabs.count()):
+            self._ensure_tab_status_widget(index)
 
     def _toolbar_anchor(self, action: QAction) -> QPoint:
         for toolbar in self.findChildren(QToolBar):

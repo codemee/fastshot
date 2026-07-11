@@ -1,6 +1,7 @@
 from PySide6.QtCore import QLocale, QSettings
+from PySide6.QtGui import QKeySequence
 
-from fastshot.i18n import LanguageManager, LanguageMode
+from fastshot.i18n import LanguageManager, LanguageMode, _is_traditional_chinese
 
 
 def test_language_defaults_to_system_and_uses_traditional_chinese(tmp_path):
@@ -18,6 +19,12 @@ def test_non_traditional_system_locale_uses_english(tmp_path):
 
     assert manager.effective_mode == LanguageMode.EN
     assert manager.text("save") == "Save"
+
+
+def test_macos_traditional_chinese_language_tag_is_recognized():
+    assert _is_traditional_chinese("zh-Hant-TW")
+    assert _is_traditional_chinese("zh-TW")
+    assert not _is_traditional_chinese("zh-Hans-CN")
 
 
 def test_language_selection_is_persisted(tmp_path):
@@ -72,6 +79,12 @@ def test_toolbar_tooltips_include_shortcuts(qt_app, tmp_path):
     manager = LanguageManager(settings, QLocale("en_US"))
     window = EditorWindow(language_manager=manager)
 
-    assert "Alt+P" in window.pen_action.toolTip()
-    assert "Ctrl" in window.save_action.toolTip()
-    assert "Ctrl" in window.zoom_in_action.toolTip()
+    native_pen = QKeySequence("Alt+P").toString(QKeySequence.SequenceFormat.NativeText)
+    native_save = QKeySequence.StandardKey.Save
+    assert native_pen in window.pen_action.toolTip()
+    native_save_text = QKeySequence(native_save).toString(QKeySequence.SequenceFormat.NativeText)
+    native_zoom = window.zoom_in_action.shortcuts()[0].toString(
+        QKeySequence.SequenceFormat.NativeText
+    )
+    assert native_save_text in window.save_action.toolTip()
+    assert native_zoom in window.zoom_in_action.toolTip()

@@ -3,7 +3,8 @@
 FastShot 的 UI 大部分使用 PySide6，可跨平台重用；但截圖、全域快捷鍵、游標、視窗選取與剪貼簿都是平台相依區域。macOS 實作時請優先處理本文件列出的邊界。
 
 配色主題屬於跨平台共用 UI：`ThemeManager` 使用 Qt 系統配色提示與 `QSettings`，支援跟隨系統、淺色及深色模式。修改主題樣式或圖示時，應同時在 Windows 與 macOS 驗證系統配色偵測、即時切換與持久化。
-介面語言同樣屬於跨平台共用 UI：`LanguageManager` 使用 Qt locale，繁體中文系統環境顯示繁中，其餘預設英文，並允許使用者手動覆寫。
+介面語言同樣屬於跨平台共用 UI：`LanguageManager` 在 macOS 優先讀取使用者的 `AppleLanguages`，其他平台使用 Qt locale；繁體中文系統環境顯示繁中，其餘預設英文，並允許使用者手動覆寫。
+頁籤關閉按鈕遵循平台位置：macOS 位於左側、Windows 位於右側，但使用 FastShot 自繪高對比圖示以確保淺色與深色主題皆清楚可見。未存檔狀態以標題後方、垂直置中的紅色方塊表示，不再修改標題文字。
 
 ## Current Platform State
 
