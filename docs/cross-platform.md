@@ -1,5 +1,7 @@
 # Cross-Platform Notes
 
+[繁體中文](cross-platform.md) | [English](cross-platform.en.md)
+
 FastShot 的 UI 大部分使用 PySide6，可跨平台重用；但截圖、全域快捷鍵、游標、視窗選取與剪貼簿都是平台相依區域。macOS 實作時請優先處理本文件列出的邊界。
 
 配色主題屬於跨平台共用 UI：`ThemeManager` 使用 Qt 系統配色提示與 `QSettings`，支援跟隨系統、淺色及深色模式。修改主題樣式或圖示時，應同時在 Windows 與 macOS 驗證系統配色偵測、即時切換與持久化。

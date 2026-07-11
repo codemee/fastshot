@@ -1,5 +1,7 @@
 # Architecture
 
+[繁體中文](architecture.md) | [English](architecture.en.md)
+
 本文是給初次接觸 FastShot 專案的導覽。若要做 macOS 跨平台實作，請同時閱讀 [cross-platform.md](cross-platform.md)。
 
 ## Entry Points

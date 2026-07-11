@@ -1,5 +1,7 @@
 # 簡易截圖小工具：FastShot
 
+[繁體中文](PRD.md) | [English](PRD.en.md)
+
 以 Python 實作，快捷鍵為主的跨平台截圖工具，工具命令為 fastshot。
 
 ## 使用介面

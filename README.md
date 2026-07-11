@@ -1,5 +1,7 @@
 # FastShot
 
+[繁體中文](README.md) | [English](README.en.md)
+
 FastShot 是以 Python 實作的桌面截圖工具，主打全域快捷鍵、系統匣常駐、多頁籤編輯與快速複製/存檔。目前支援 Windows 與 macOS；平台權限與驗收方式請閱讀 [Cross-Platform Notes](docs/cross-platform.md)。
 
 ## Current Status
