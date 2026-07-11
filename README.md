@@ -10,6 +10,14 @@ FastShot 是以 Python 實作的桌面截圖工具，主打全域快捷鍵、系
 
 ## Quick Start
 
+不需安裝即可使用 `uvx` 執行正式版本：
+
+```powershell
+uvx --from "fastshot @ git+https://github.com/codemee/fastshot.git@v0.0.1" fastshot
+```
+
+第一次執行會下載套件並建立 uv 快取環境，後續會重用快取。臨時試用建議使用 `uvx`；若要長期使用，則安裝為 uv tool。
+
 使用 uv 從 GitHub 安裝正式版本：
 
 ```powershell
