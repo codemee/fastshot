@@ -4,7 +4,8 @@ FastShot 的 UI 大部分使用 PySide6，可跨平台重用；但截圖、全�
 
 配色主題屬於跨平台共用 UI：`ThemeManager` 使用 Qt 系統配色提示與 `QSettings`，支援跟隨系統、淺色及深色模式。修改主題樣式或圖示時，應同時在 Windows 與 macOS 驗證系統配色偵測、即時切換與持久化。
 介面語言同樣屬於跨平台共用 UI：`LanguageManager` 在 macOS 優先讀取使用者的 `AppleLanguages`，其他平台使用 Qt locale；繁體中文系統環境顯示繁中，其餘預設英文，並允許使用者手動覆寫。
-頁籤關閉按鈕遵循平台位置：macOS 位於左側、Windows 位於右側，但使用 FastShot 自繪高對比圖示以確保淺色與深色主題皆清楚可見。未存檔狀態以標題後方、垂直置中的紅色方塊表示，不再修改標題文字。
+頁籤關閉按鈕遵循平台位置：macOS 位於左側、Windows 位於右側，但使用 FastShot 自繪高對比圖示以確保淺色與深色主題皆清楚可見。Windows 的未存檔狀態方塊位於標題左側；其他平台依原生頁籤配置安排。
+圖片拖放與剪貼簿貼上使用 Qt `QMimeData`／`QUrl`／clipboard API，核心流程可跨平台共用。macOS 驗收時需額外確認 Finder 複製檔案可取得 local file URL、HEIC/HEIF 解碼器是否可用，以及 App Sandbox 打包後是否仍有權限寫回使用者拖入的原始檔案。
 
 ## Current Platform State
 
@@ -81,4 +82,6 @@ Linux 尚未作為主要目標。Wayland/X11 差異很大，尤其是全域快�
 - 截圖後影像出現在編輯區左上角。
 - 複製到剪貼簿可貼到常見 app。
 - 存檔 PNG/JPG 正常。
+- 拖放圖片以原始檔名開啟、初始不標為 dirty，編輯並儲存後可寫回來源檔。
+- 直接貼上影像與從檔案管理器複製圖片後貼上，會建立使用截圖命名規範的新頁籤。
 - 最小化隱藏、系統匣雙擊顯示、右鍵退出正常。

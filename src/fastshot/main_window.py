@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from PIL import Image
@@ -37,6 +38,19 @@ from fastshot.qt_image import pil_to_qimage
 from fastshot.settings import CaptureSettings, DrawingSettings, Tool
 from fastshot.theme import ThemeManager, ThemeMode
 
+IMAGE_SUFFIXES = {
+    ".bmp",
+    ".gif",
+    ".heic",
+    ".heif",
+    ".jpeg",
+    ".jpg",
+    ".png",
+    ".tif",
+    ".tiff",
+    ".webp",
+}
+
 
 class ArrowSpinBox(QSpinBox):
     BUTTON_WIDTH = 20
@@ -67,11 +81,11 @@ class ArrowSpinBox(QSpinBox):
 
 
 class TabStatusWidget(QWidget):
-    def __init__(self, close_button: QWidget | None = None) -> None:
+    def __init__(self, close_button: QWidget | None = None, marker_on_left: bool = False) -> None:
         super().__init__()
         self.has_close_button = close_button is not None
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(6, 0, 14, 0)
+        layout.setContentsMargins(7 if marker_on_left else 6, 0, 6 if marker_on_left else 14, 0)
         layout.setSpacing(5)
         self.marker = QLabel()
         self.marker.setFixedSize(7, 7)
@@ -111,6 +125,7 @@ class EditorWindow(QMainWindow):
         self.theme_manager = theme_manager or ThemeManager(QApplication.instance())
         self.language_manager = language_manager or LanguageManager()
         self.setWindowIcon(camera_icon())
+        self.setAcceptDrops(True)
         self.settings = DrawingSettings.default()
         self.capture_settings = CaptureSettings()
         self.active_tool = Tool.PEN
@@ -140,8 +155,15 @@ class EditorWindow(QMainWindow):
         self.resize(1100, 760)
 
     def add_shot(self, image: Image.Image) -> None:
-        title = make_tab_title()
-        qimage = pil_to_qimage(image)
+        self._add_image(pil_to_qimage(image), make_tab_title())
+
+    def _add_image(
+        self,
+        qimage,
+        title: str,
+        path: Path | None = None,
+        dirty: bool = True,
+    ) -> None:
         canvas = ImageCanvas(qimage, self.settings)
         canvas.set_tool(self.active_tool)
         canvas.changed.connect(self._mark_current_dirty)
@@ -150,12 +172,78 @@ class EditorWindow(QMainWindow):
         area.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         index = self.tabs.addTab(area, title)
         self._ensure_tab_status_widget(index)
-        self.documents[index] = ShotDocument(title=title, image=canvas)
+        self.documents[index] = ShotDocument(
+            title=title,
+            image=canvas,
+            path=path,
+            dirty=dirty,
+        )
         self.tabs.setCurrentIndex(index)
         self.showNormal()
         self.raise_()
         self.activateWindow()
         self._refresh_tabs()
+
+    def dragEnterEvent(self, event) -> None:
+        if self._image_paths_from_mime(event.mimeData()):
+            event.acceptProposedAction()
+            return
+        super().dragEnterEvent(event)
+
+    def dragMoveEvent(self, event) -> None:
+        if self._image_paths_from_mime(event.mimeData()):
+            event.acceptProposedAction()
+            return
+        super().dragMoveEvent(event)
+
+    def dropEvent(self, event) -> None:
+        paths = self._image_paths_from_mime(event.mimeData())
+        if not paths:
+            super().dropEvent(event)
+            return
+        for path in paths:
+            self._open_image_path(path, path.name, remember_path=True)
+        event.acceptProposedAction()
+
+    def paste_image(self) -> None:
+        from PySide6.QtWidgets import QApplication
+
+        mime = QApplication.clipboard().mimeData()
+        paths = self._image_paths_from_mime(mime)
+        if paths:
+            for path in paths:
+                self._open_image_path(path, make_tab_title())
+            return
+        image = QApplication.clipboard().image()
+        if not image.isNull():
+            self._add_image(image.copy(), make_tab_title())
+
+    def _open_image_path(self, path: Path, title: str, remember_path: bool = False) -> bool:
+        try:
+            with Image.open(path) as image:
+                qimage = pil_to_qimage(image)
+        except (OSError, ValueError):
+            QMessageBox.warning(self, "FastShot", self._tr("open_image_failed", path=path))
+            return False
+        self._add_image(
+            qimage,
+            title,
+            path=path if remember_path else None,
+            dirty=not remember_path,
+        )
+        return True
+
+    @staticmethod
+    def _image_paths_from_mime(mime) -> list[Path]:
+        if mime is None or not mime.hasUrls():
+            return []
+        paths: list[Path] = []
+        for url in mime.urls():
+            if url.isLocalFile():
+                path = Path(url.toLocalFile())
+                if path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES:
+                    paths.append(path)
+        return paths
 
     def set_active_tool(self, tool: Tool) -> None:
         self.active_tool = tool
@@ -185,7 +273,8 @@ class EditorWindow(QMainWindow):
         canvas = self._current_canvas()
         if doc is None or canvas is None:
             return
-        default_path = doc.path or Path.cwd() / f"{doc.title}.png"
+        default_name = doc.title if Path(doc.title).suffix else f"{doc.title}.png"
+        default_path = doc.path or Path.cwd() / default_name
         path, selected = QFileDialog.getSaveFileName(
             self,
             self._tr("save_screenshot"),
@@ -283,6 +372,11 @@ class EditorWindow(QMainWindow):
         self.copy_action.setShortcut(QKeySequence.StandardKey.Copy)
         self.copy_action.triggered.connect(self.copy_current)
         toolbar.addAction(self.copy_action)
+
+        self.paste_action = QAction(self._tr("paste"), self)
+        self.paste_action.setShortcut(QKeySequence.StandardKey.Paste)
+        self.paste_action.triggered.connect(self.paste_image)
+        self.addAction(self.paste_action)
 
         self.save_action = QAction(tool_icon("save"), "Save", self)
         self.save_action.setShortcut(QKeySequence.StandardKey.Save)
@@ -524,7 +618,16 @@ class EditorWindow(QMainWindow):
             return
         suffix = path.suffix.lower()
         image = canvas.export_image()
-        fmt = "JPG" if suffix in {".jpg", ".jpeg"} else "PNG"
+        formats = {
+            ".bmp": "BMP",
+            ".jpeg": "JPG",
+            ".jpg": "JPG",
+            ".png": "PNG",
+            ".tif": "TIFF",
+            ".tiff": "TIFF",
+            ".webp": "WEBP",
+        }
+        fmt = formats.get(suffix, "PNG")
         if not image.save(str(path), fmt):
             QMessageBox.warning(self, "FastShot", self._tr("save_failed", path=path))
             return
@@ -608,6 +711,24 @@ class EditorWindow(QMainWindow):
 
     def _ensure_tab_status_widget(self, index: int) -> TabStatusWidget:
         tab_bar = self.tabs.tabBar()
+        if sys.platform == "win32":
+            left = tab_bar.tabButton(index, QTabBar.ButtonPosition.LeftSide)
+            if not isinstance(left, TabStatusWidget):
+                left = TabStatusWidget(marker_on_left=True)
+                tab_bar.setTabButton(index, QTabBar.ButtonPosition.LeftSide, left)
+
+            right = tab_bar.tabButton(index, QTabBar.ButtonPosition.RightSide)
+            if isinstance(right, TabCloseWidget):
+                self._style_tab_close_button(right.close_button)
+            else:
+                close_button = self._new_tab_close_button()
+                right = TabCloseWidget(close_button)
+                close_button.clicked.connect(
+                    lambda _checked=False, widget=right: self._close_tab_widget(widget)
+                )
+                tab_bar.setTabButton(index, QTabBar.ButtonPosition.RightSide, right)
+            return left
+
         close_side = QTabBar.ButtonPosition(
             tab_bar.style().styleHint(QStyle.StyleHint.SH_TabBar_CloseButtonPosition)
         )
@@ -754,6 +875,7 @@ class EditorWindow(QMainWindow):
             (self.style_action, "line_color"),
             (self.undo_action, "undo"),
             (self.copy_action, "copy"),
+            (self.paste_action, "paste"),
             (self.save_action, "save"),
             (self.save_as_action, "save_as"),
             (self.zoom_in_action, "zoom_in"),

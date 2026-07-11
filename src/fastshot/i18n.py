@@ -27,6 +27,7 @@ TRANSLATIONS = {
         "line_color": "Line and color",
         "undo": "Undo",
         "copy": "Copy",
+        "paste": "Paste image",
         "save": "Save",
         "save_as": "Save As",
         "zoom_in": "Zoom in",
@@ -56,6 +57,7 @@ TRANSLATIONS = {
         "save_failed": "Could not save {path}",
         "exit": "Exit",
         "capture_failed": "Capture failed: {error}",
+        "open_image_failed": "Could not open image: {path}",
         "tooltip_shortcut": "{label} ({shortcut})",
     },
     "zh_TW": {
@@ -70,6 +72,7 @@ TRANSLATIONS = {
         "line_color": "線條與顏色",
         "undo": "復原",
         "copy": "複製",
+        "paste": "貼上影像",
         "save": "儲存",
         "save_as": "另存新檔",
         "zoom_in": "放大",
@@ -99,6 +102,7 @@ TRANSLATIONS = {
         "save_failed": "無法儲存至 {path}",
         "exit": "結束",
         "capture_failed": "擷取失敗：{error}",
+        "open_image_failed": "無法開啟影像：{path}",
         "tooltip_shortcut": "{label} ({shortcut})",
     },
 }
