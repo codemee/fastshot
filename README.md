@@ -10,6 +10,27 @@ FastShot 是以 Python 實作的桌面截圖工具，主打全域快捷鍵、系
 
 ## Quick Start
 
+使用 uv 從 GitHub 安裝正式版本：
+
+```powershell
+uv tool install "fastshot @ git+https://github.com/codemee/fastshot.git@v0.0.1"
+fastshot
+```
+
+更新已安裝的版本：
+
+```powershell
+uv tool upgrade fastshot
+```
+
+若要測試 `main` 的最新開發成果：
+
+```powershell
+uv tool install --force "fastshot @ git+https://github.com/codemee/fastshot.git@main"
+```
+
+從原始碼啟動開發環境：
+
 ```powershell
 uv sync
 uv run fastshot
