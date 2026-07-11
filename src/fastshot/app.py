@@ -96,6 +96,7 @@ class FastShotApplication(QObject):
         self.tray = self._build_tray()
         self._hotkey_handles: list[object] = []
         self._native_hotkey_filter: WindowsHotkeyFilter | None = None
+        self._mac_hotkey_listener = None
         self._capture_in_progress = False
         self._register_hotkeys()
 
@@ -163,6 +164,26 @@ class FastShotApplication(QObject):
             except Exception as exc:
                 QMessageBox.warning(self.window, "FastShot", f"Native global hotkeys unavailable: {exc}")
 
+        if sys.platform == "darwin":
+            try:
+                from fastshot.platforms.macos import MacHotkeyListener, accessibility_allowed
+
+                accessibility_allowed(request=True)
+                modes = {
+                    "a": CaptureMode.ACTIVE_WINDOW,
+                    "r": CaptureMode.REGION,
+                    "f": CaptureMode.FULLSCREEN,
+                    "w": CaptureMode.WINDOW_UNDER_CURSOR,
+                }
+                self._mac_hotkey_listener = MacHotkeyListener(
+                    lambda key: self.bridge.captureRequested.emit(modes[key])
+                )
+                self._mac_hotkey_listener.start()
+                return
+            except Exception as exc:
+                QMessageBox.warning(self.window, "FastShot", f"macOS global hotkeys unavailable: {exc}")
+                return
+
         try:
             import keyboard
         except Exception as exc:  # pragma: no cover - optional dependency guard
@@ -187,6 +208,9 @@ class FastShotApplication(QObject):
                 QMessageBox.warning(self.window, "FastShot", f"Could not register {shortcut}: {exc}")
 
     def _unregister_hotkeys(self) -> None:
+        if self._mac_hotkey_listener is not None:
+            self._mac_hotkey_listener.stop()
+            self._mac_hotkey_listener = None
         if self._native_hotkey_filter is not None:
             self.app.removeNativeEventFilter(self._native_hotkey_filter)
             self._native_hotkey_filter.unregister()

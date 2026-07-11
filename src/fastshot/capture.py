@@ -3,19 +3,21 @@ from __future__ import annotations
 import sys
 import time
 import math
-from ctypes import POINTER, Structure, byref, c_int, c_uint, c_void_p, memset, sizeof, string_at, windll
+from ctypes import POINTER, Structure, byref, c_int, c_uint, c_void_p, memset, sizeof, string_at
 from ctypes.wintypes import BOOL, BYTE, DWORD, HBITMAP, HDC, HGDIOBJ, HICON, HWND, LONG, RECT, WORD
 from dataclasses import dataclass
 
 import mss
 from PIL import Image, ImageGrab
-from PySide6.QtCore import QPoint, QRect, Qt
+from PySide6.QtCore import QPoint, QRect, QSize, Qt
 from PySide6.QtGui import QColor, QCursor, QFont, QGuiApplication, QMouseEvent, QPainter, QPen
 from PySide6.QtWidgets import QApplication, QWidget
 
 from fastshot.settings import CaptureMode, CaptureSettings
 
 if sys.platform == "win32":
+    from ctypes import windll
+
     import win32api
     import win32con
     import win32gui
@@ -25,6 +27,7 @@ if sys.platform == "win32":
     BI_RGB = 0
     DIB_RGB_COLORS = 0
 else:  # pragma: no cover - platform branch
+    windll = None
     win32api = None
     win32con = None
     win32gui = None
@@ -181,21 +184,28 @@ class WindowSelector(QWidget):
         painter = QPainter(self)
         painter.fillRect(self.rect(), QColor(0, 0, 0, 40))
         if self.target_rect is not None:
+            top_left = self.mapFromGlobal(QPoint(self.target_rect.left, self.target_rect.top))
             rect = QRect(
-                self.mapFromGlobal(QPoint(self.target_rect.left, self.target_rect.top)),
-                self.mapFromGlobal(
-                    QPoint(
-                        self.target_rect.left + self.target_rect.width,
-                        self.target_rect.top + self.target_rect.height,
-                    )
-                ),
-            ).normalized()
-            painter.setPen(QPen(QColor("#ff922b"), 3))
-            painter.drawRect(rect)
+                top_left,
+                QSize(self.target_rect.width, self.target_rect.height),
+            ).intersected(self.rect().adjusted(1, 1, -2, -2))
+            painter.fillRect(rect, QColor(255, 146, 43, 35))
+            pen_width = 3
+            painter.setPen(QPen(QColor("#ff922b"), pen_width))
+            # QPainter centers strokes on the rectangle edge. Inset the
+            # outline so the selection indicator never spills outside the
+            # selected window/control bounds.
+            inset = (pen_width + 1) // 2
+            outline = rect.adjusted(inset, inset, -inset, -inset)
+            if not outline.isEmpty():
+                painter.drawRect(outline)
         painter.setPen(QPen(QColor("#f8f9fa"), 2))
         painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Click a window or control, Esc to cancel")
 
     def poll(self) -> None:
+        if sys.platform == "darwin":
+            self._poll_macos()
+            return
         if win32api is None:
             return
         if win32api.GetAsyncKeyState(0x1B) & 0x8000:
@@ -218,12 +228,39 @@ class WindowSelector(QWidget):
             self.close()
         self._left_was_down = left_is_down
 
+    def _poll_macos(self) -> None:
+        from AppKit import NSEvent
+        import Quartz
+
+        if Quartz.CGEventSourceKeyState(Quartz.kCGEventSourceStateCombinedSessionState, 53):
+            self.cancelled = True
+            self.close()
+            return
+        buttons = int(NSEvent.pressedMouseButtons())
+        point = QCursor.pos()
+        now = time.monotonic()
+        if now - self._last_query_at >= 0.04:
+            self._last_query_at = now
+            rect = self._target_at_point(point, use_uia=True)
+            if rect != self.target_rect:
+                self.target_rect = rect
+                self.update()
+        left_is_down = bool(buttons & 1)
+        if self._left_was_down and not left_is_down:
+            self.close()
+        self._left_was_down = left_is_down
+
     def keyPressEvent(self, event) -> None:
         if event.key() == Qt.Key.Key_Escape:
             self.cancelled = True
             self.close()
 
     def _target_at_point(self, point: QPoint, use_uia: bool, temporary: bool = False) -> CaptureRect | None:
+        if sys.platform == "darwin":
+            from fastshot.platforms.macos import rect_at_point
+
+            bounds = rect_at_point(point.x(), point.y())
+            return CaptureRect(*bounds) if bounds else None
         if use_uia:
             rect = _window_rect_at_point(point, use_uia=True)
             return rect
@@ -273,6 +310,14 @@ class CountdownOverlay(QWidget):
 
 class CaptureService:
     def capture(self, mode: CaptureMode, settings: CaptureSettings) -> Image.Image | None:
+        if sys.platform == "darwin":
+            from fastshot.platforms.macos import screen_recording_allowed
+
+            if not screen_recording_allowed(request=True):
+                raise PermissionError(
+                    "Screen Recording permission is required. Enable FastShot (or its terminal) "
+                    "in System Settings > Privacy & Security > Screen Recording."
+                )
         rect = self._rect_for_mode(mode)
         if rect is None or rect.is_empty:
             return None
@@ -280,10 +325,29 @@ class CaptureService:
         if settings.delay_seconds > 0:
             self._countdown(settings.delay_seconds)
 
-        image = self._grab_rect(rect)
+        if sys.platform == "darwin" and mode == CaptureMode.WINDOW_UNDER_CURSOR:
+            image = self._grab_macos_selection_without_hover(rect)
+        else:
+            image = self._grab_rect(rect)
         if settings.include_cursor:
             self._draw_cursor(image, rect)
         return image
+
+    def _grab_macos_selection_without_hover(self, rect: CaptureRect) -> Image.Image:
+        """Hide transient browser link URLs and tooltips before capture."""
+        original = QCursor.pos()
+        # A point near the center of the native title bar is inside the target
+        # window but outside its web content, even when the window is maximized.
+        safe_point = QPoint(rect.left + rect.width // 2, rect.top + min(12, rect.height // 2))
+        try:
+            QCursor.setPos(safe_point)
+            QApplication.processEvents()
+            time.sleep(0.4)
+            return self._grab_rect(rect)
+        finally:
+            QCursor.setPos(original)
+            QApplication.processEvents()
+            time.sleep(0.03)
 
     def _rect_for_mode(self, mode: CaptureMode) -> CaptureRect | None:
         if mode == CaptureMode.FULLSCREEN:
@@ -304,7 +368,11 @@ class CaptureService:
     def _select_region(self) -> CaptureRect | None:
         selector = RegionSelector()
         selector.show()
+        selector.raise_()
+        selector.activateWindow()
+        selector.setFocus(Qt.FocusReason.ActiveWindowFocusReason)
         QApplication.setActiveWindow(selector)
+        QApplication.processEvents()
         while selector.isVisible():
             QApplication.processEvents()
             time.sleep(0.01)
@@ -314,12 +382,19 @@ class CaptureService:
         return selected.intersect(self._fullscreen_rect())
 
     def _active_window_rect(self) -> CaptureRect | None:
+        if sys.platform == "darwin":
+            from fastshot.platforms.macos import active_window_bounds
+
+            bounds = active_window_bounds()
+            return CaptureRect(*bounds) if bounds else None
         if win32gui is None:
             return None
         hwnd = win32gui.GetForegroundWindow()
         return _window_rect(hwnd)
 
     def _window_under_cursor_rect(self) -> CaptureRect | None:
+        if sys.platform == "darwin":
+            return self._select_window_rect()
         if win32gui is None or win32api is None:
             return None
         return self._select_window_rect()
@@ -342,6 +417,21 @@ class CaptureService:
             return ImageGrab.grab(bbox=bbox, all_screens=True).convert("RGB")
 
     def _draw_cursor(self, image: Image.Image, rect: CaptureRect) -> None:
+        if sys.platform == "darwin":
+            from fastshot.platforms.macos import current_cursor_image
+
+            try:
+                cursor = current_cursor_image()
+            except Exception:
+                return
+            if cursor:
+                cursor_image, hotspot_x, hotspot_y, screen_x, screen_y = cursor
+                paste_at = (
+                    screen_x - rect.left - hotspot_x,
+                    screen_y - rect.top - hotspot_y,
+                )
+                image.paste(cursor_image, paste_at, cursor_image)
+            return
         if win32gui is None or win32api is None:
             return
         try:
@@ -358,7 +448,10 @@ class CaptureService:
     def _select_window_rect(self) -> CaptureRect | None:
         selector = WindowSelector()
         selector.show()
+        selector.raise_()
+        selector.activateWindow()
         QApplication.setActiveWindow(selector)
+        QApplication.processEvents()
         while selector.isVisible():
             selector.poll()
             QApplication.processEvents()

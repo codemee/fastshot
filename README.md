@@ -1,11 +1,11 @@
 # FastShot
 
-FastShot 是以 Python 實作的桌面截圖工具，主打全域快捷鍵、系統匣常駐、多頁籤編輯與快速複製/存檔。現階段 Windows 功能已接近完整；macOS 跨平台支援尚未完成，後續實作前請先閱讀 [Cross-Platform Notes](docs/cross-platform.md)。
+FastShot 是以 Python 實作的桌面截圖工具，主打全域快捷鍵、系統匣常駐、多頁籤編輯與快速複製/存檔。目前支援 Windows 與 macOS；平台權限與驗收方式請閱讀 [Cross-Platform Notes](docs/cross-platform.md)。
 
 ## Current Status
 
 - Windows: 主要功能已實作並經手動測試調整。
-- macOS: 尚未完成平台層實作，尤其是全域快捷鍵、視窗/控制項選取、真實游標擷取與剪貼簿細節。
+- macOS: 已實作 Quartz 全域快捷鍵、螢幕擷取、焦點視窗、視窗/控制項選取與游標擷取。
 - Linux: 僅保留基本架構與部分通用能力，尚未作為主要目標平台。
 
 ## Quick Start
@@ -23,6 +23,8 @@ uv run fastshot
 - `Alt+Shift+R`: 擷取矩形區域
 - `Alt+Shift+F`: 擷取全螢幕
 - `Alt+Shift+W`: 選取視窗或控制項後擷取
+
+macOS 使用相同字母組合，將 `Alt` 改為 `Option`。首次執行時，請依系統提示授予「螢幕錄製」與「輔助使用」權限；授權後可能需要重新啟動 FastShot。
 
 編輯工具快捷鍵：
 
@@ -45,10 +47,10 @@ uv run fastshot
 
 ## Development
 
-```powershell
+```shell
 uv sync
 uv run pytest -q
-.\.venv\Scripts\python.exe -m compileall src tests
+uv run python -m compileall src tests
 ```
 
 若 FastShot 正在執行，`compileall` 有時會因 `__pycache__` 或 executable 被鎖而失敗；先關閉或停止 `fastshot.exe` 後再重跑。
