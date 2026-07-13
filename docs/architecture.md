@@ -46,6 +46,7 @@
 
 - `icons.py`
   - 程式內自繪 toolbar/system tray icon。
+  - 工作列與系統匣相機圖示分別調整透明邊距，並提供 16–64px 多解析度 pixmap，讓不同 Windows 顯示槽位維持清楚且一致的視覺占比。
 
 - `settings.py`
   - `CaptureMode`、`Tool`、`CaptureSettings`、`DrawingSettings`。
@@ -87,6 +88,7 @@
 目前測試以輕量單元測試和 Qt offscreen smoke 為主：
 
 - `tests/test_document.py`: tab title、dirty/save 狀態、文件 reindex。
+- `tests/test_icons.py`: 工作列與系統匣圖示在原生槽位尺寸中的不透明圖案占比。
 - `tests/test_main_window.py`: 圖片捲軸排除 Canvas padding 的幾何與補白元件。
 - 以 `uv run pytest -q` 與 `uv run python -m compileall src tests` 執行跨平台檢查。
 

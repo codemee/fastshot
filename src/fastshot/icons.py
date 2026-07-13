@@ -12,20 +12,48 @@ RED = QColor("#e03131")
 
 
 def camera_icon(size: int = 64) -> QIcon:
+    icon = QIcon()
+    sizes = {candidate for candidate in (16, 20, 24, 32, 48, 64) if candidate <= size}
+    sizes.add(size)
+    for pixmap_size in sorted(sizes):
+        icon.addPixmap(_camera_pixmap(pixmap_size, tray=False))
+    return icon
+
+
+def tray_icon() -> QIcon:
+    icon = QIcon()
+    for size in (16, 20, 24, 32, 48, 64):
+        icon.addPixmap(_camera_pixmap(size, tray=True))
+    return icon
+
+
+def _camera_pixmap(size: int, tray: bool) -> QPixmap:
     pixmap = QPixmap(size, size)
     pixmap.fill(Qt.GlobalColor.transparent)
     painter = _painter(pixmap)
     scale = size / 64
     painter.setBrush(INK)
     painter.setPen(Qt.PenStyle.NoPen)
-    painter.drawRoundedRect(_rect(10, 22, 44, 30, scale), 5 * scale, 5 * scale)
-    painter.drawRect(_rect(20, 16, 16, 8, scale))
+    if tray:
+        body = (3, 17, 58, 43)
+        top = (17, 9, 24, 10)
+        outer_lens = (20, 26, 24, 24)
+        inner_lens = (27, 33, 10, 10)
+        radius = 7
+    else:
+        body = (5, 15, 54, 44)
+        top = (18, 7, 22, 10)
+        outer_lens = (21, 25, 22, 22)
+        inner_lens = (27, 31, 10, 10)
+        radius = 7
+    painter.drawRoundedRect(_rect(*body, scale), radius * scale, radius * scale)
+    painter.drawRect(_rect(*top, scale))
     painter.setBrush(QColor("#f8f9fa"))
-    painter.drawEllipse(_rect(24, 28, 16, 16, scale))
+    painter.drawEllipse(_rect(*outer_lens, scale))
     painter.setBrush(BLUE)
-    painter.drawEllipse(_rect(29, 33, 6, 6, scale))
+    painter.drawEllipse(_rect(*inner_lens, scale))
     painter.end()
-    return QIcon(pixmap)
+    return pixmap
 
 
 def tool_icon(
