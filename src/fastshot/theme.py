@@ -107,6 +107,27 @@ def _stylesheet(mode: ThemeMode) -> str:
             QTabBar::tab { padding: 7px 12px; background: #292b2f; border: 0; margin-right: 1px; }
             QTabBar::tab:selected { background: #202124; border-bottom: 2px solid #5da9e9; }
             QScrollArea { background: #111315; border: 0; }
+            QScrollBar:vertical { background: #292b2f; width: 12px; margin: 0; }
+            QScrollBar:horizontal { background: #292b2f; height: 12px; margin: 0; }
+            QScrollBar::handle:vertical {
+                background: #5f6368;
+                min-height: 28px;
+                margin: 2px;
+                border-radius: 4px;
+            }
+            QScrollBar::handle:horizontal {
+                background: #5f6368;
+                min-width: 28px;
+                margin: 2px;
+                border-radius: 4px;
+            }
+            QScrollBar::handle:hover { background: #8ab4f8; }
+            QScrollBar::add-line, QScrollBar::sub-line {
+                width: 0;
+                height: 0;
+                background: transparent;
+            }
+            QScrollBar::add-page, QScrollBar::sub-page { background: transparent; }
             QMenu { background: #292b2f; border: 1px solid #4b4f54; }
             QMenu::item { padding: 6px 18px; }
             QMenu::item:selected { background: #3c4043; }
@@ -159,6 +180,27 @@ def _stylesheet(mode: ThemeMode) -> str:
         QTabBar::tab { padding: 7px 12px; background: #e9ecef; border: 0; margin-right: 1px; }
         QTabBar::tab:selected { background: #ffffff; border-bottom: 2px solid #1971c2; }
         QScrollArea { background: #ced4da; border: 0; }
+        QScrollBar:vertical { background: #dee2e6; width: 12px; margin: 0; }
+        QScrollBar:horizontal { background: #dee2e6; height: 12px; margin: 0; }
+        QScrollBar::handle:vertical {
+            background: #868e96;
+            min-height: 28px;
+            margin: 2px;
+            border-radius: 4px;
+        }
+        QScrollBar::handle:horizontal {
+            background: #868e96;
+            min-width: 28px;
+            margin: 2px;
+            border-radius: 4px;
+        }
+        QScrollBar::handle:hover { background: #339af0; }
+        QScrollBar::add-line, QScrollBar::sub-line {
+            width: 0;
+            height: 0;
+            background: transparent;
+        }
+        QScrollBar::add-page, QScrollBar::sub-page { background: transparent; }
         QMenu { background: #ffffff; border: 1px solid #ced4da; }
         QMenu::item { padding: 6px 18px; }
         QMenu::item:selected { background: #e7f5ff; }

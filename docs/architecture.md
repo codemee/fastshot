@@ -38,6 +38,8 @@
   - 編輯區與影像操作。
   - 支援自由畫筆、線條、箭頭、矩形、文字、馬賽克、裁切控制方塊、縮放與 undo。
   - Canvas 會在圖片外圍預留 padding，讓裁切控制方塊不覆蓋圖片內容。
+  - 捲軸只對齊圖片區域，不延伸到裁切控制方塊的 padding；兩端與右下角交會區使用 Canvas 補白色。
+  - 淺色與深色主題使用相同尺寸的自訂捲軸，並以各自主題的高對比軌道、滑塊及 hover 色呈現。
 
 - `document.py`
   - `ShotDocument` 管理頁籤標題、存檔路徑、dirty/unsaved 狀態。
@@ -85,6 +87,7 @@
 目前測試以輕量單元測試和 Qt offscreen smoke 為主：
 
 - `tests/test_document.py`: tab title、dirty/save 狀態、文件 reindex。
+- `tests/test_main_window.py`: 圖片捲軸排除 Canvas padding 的幾何與補白元件。
 - 以 `uv run pytest -q` 與 `uv run python -m compileall src tests` 執行跨平台檢查。
 
 重要的 GUI/OS 行為仍需手動驗收，尤其是全域快捷鍵、視窗選取、游標擷取與剪貼簿。

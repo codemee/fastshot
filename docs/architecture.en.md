@@ -16,7 +16,7 @@ This document introduces the FastShot codebase. Read [cross-platform.en.md](cros
 - `capture.py`: coordinates full-screen, region, focused-window, and selected window/control capture. Windows-specific DWM, UI Automation, cursor, and fallback logic lives here; macOS capabilities are delegated to `platforms/macos.py`. Delayed capture also lives here.
 - `platforms/macos.py`: handles permissions, Accessibility focused-window/control hit testing, cursor capture, and consumable Quartz global shortcuts.
 - `main_window.py`: owns the editor, toolbar, tabs, save/save-as, zoom, and settings panels. Screenshots, dropped files, and clipboard images share one tab creation path. Dropped files retain their source `Path` and open clean; clipboard images are new unsaved documents. Windows puts the dirty marker left of the title and close button on the right; other platforms follow native tab placement.
-- `canvas.py`: implements pen, line, arrow, rectangle, text, mosaic, crop handles, zoom, and undo. Padding keeps crop handles outside image content.
+- `canvas.py`: implements pen, line, arrow, rectangle, text, mosaic, crop handles, zoom, and undo. Padding keeps crop handles outside image content. Scrollbars align only with the image instead of extending into this padding; their end spacers and lower-right corner use the canvas padding color. Light and dark themes use matching scrollbar dimensions with theme-specific high-contrast tracks, handles, and hover colors.
 - `document.py`: tracks title, path, and dirty/unsaved state through `ShotDocument`.
 - `icons.py`: draws toolbar and tray icons in code.
 - `settings.py`: defines `CaptureMode`, `Tool`, `CaptureSettings`, and `DrawingSettings`.
@@ -46,6 +46,7 @@ Cropping is also an image operation: releasing a dragged outer crop handle appli
 ## Testing
 
 - `tests/test_document.py`: tab names, dirty/save state, document reindexing, and image import.
+- `tests/test_main_window.py`: image scrollbar geometry and padding widgets that exclude canvas padding.
 - Run `uv run pytest -q` and `uv run python -m compileall src tests` for cross-platform checks.
 
 Global shortcuts, window selection, cursor capture, drag/drop, and clipboard behavior still require manual OS-level acceptance testing.
