@@ -1,0 +1,30 @@
+from fastshot.icons import camera_icon, tray_icon
+
+
+def _opaque_bounds(icon, size):
+    image = icon.pixmap(size, size).toImage()
+    opaque = [
+        (x, y)
+        for y in range(image.height())
+        for x in range(image.width())
+        if image.pixelColor(x, y).alpha() > 0
+    ]
+    left = min(x for x, _y in opaque)
+    right = max(x for x, _y in opaque)
+    top = min(y for _x, y in opaque)
+    bottom = max(y for _x, y in opaque)
+    return right - left + 1, bottom - top + 1
+
+
+def test_window_icon_fills_the_taskbar_slot(qt_app):
+    width, height = _opaque_bounds(camera_icon(), 32)
+
+    assert width >= 27
+    assert height >= 25
+
+
+def test_tray_icon_fills_the_system_tray_slot(qt_app):
+    width, height = _opaque_bounds(tray_icon(), 16)
+
+    assert width >= 14
+    assert height >= 13

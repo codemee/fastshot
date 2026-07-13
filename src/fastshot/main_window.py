@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
     QWidgetAction,
 )
 
-from fastshot.canvas import ImageCanvas
+from fastshot.canvas import CANVAS_PADDING, ImageCanvas
 from fastshot.document import ShotDocument, make_tab_title
 from fastshot.icons import camera_icon, tool_icon
 from fastshot.i18n import LanguageManager, LanguageMode
@@ -50,6 +50,25 @@ IMAGE_SUFFIXES = {
     ".tiff",
     ".webp",
 }
+
+
+def _align_scrollbars_to_image(area: QScrollArea) -> None:
+    for alignment in (Qt.AlignmentFlag.AlignTop, Qt.AlignmentFlag.AlignBottom):
+        spacer = QWidget()
+        spacer.setObjectName("imageScrollBarPadding")
+        spacer.setAutoFillBackground(True)
+        spacer.setFixedHeight(CANVAS_PADDING)
+        area.addScrollBarWidget(spacer, alignment)
+    for alignment in (Qt.AlignmentFlag.AlignLeft, Qt.AlignmentFlag.AlignRight):
+        spacer = QWidget()
+        spacer.setObjectName("imageScrollBarPadding")
+        spacer.setAutoFillBackground(True)
+        spacer.setFixedWidth(CANVAS_PADDING)
+        area.addScrollBarWidget(spacer, alignment)
+    corner = QWidget()
+    corner.setObjectName("imageScrollBarPadding")
+    corner.setAutoFillBackground(True)
+    area.setCornerWidget(corner)
 
 
 class ArrowSpinBox(QSpinBox):
@@ -168,6 +187,7 @@ class EditorWindow(QMainWindow):
         canvas.set_tool(self.active_tool)
         canvas.changed.connect(self._mark_current_dirty)
         area = QScrollArea()
+        _align_scrollbars_to_image(area)
         area.setWidget(canvas)
         area.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         index = self.tabs.addTab(area, title)

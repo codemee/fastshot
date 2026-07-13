@@ -10,7 +10,7 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon
 
 from fastshot.capture import CaptureService
-from fastshot.icons import camera_icon
+from fastshot.icons import tray_icon
 from fastshot.i18n import LanguageManager
 from fastshot.main_window import EditorWindow
 from fastshot.settings import CaptureMode
@@ -150,7 +150,7 @@ class FastShotApplication(QObject):
         QTimer.singleShot(120, do_capture)
 
     def _build_tray(self) -> QSystemTrayIcon:
-        tray = QSystemTrayIcon(camera_icon(), self.app)
+        tray = QSystemTrayIcon(tray_icon(), self.app)
         tray.setToolTip("FastShot")
         menu = QMenu()
         self.exit_action = QAction(self.language_manager.text("exit"), menu)
