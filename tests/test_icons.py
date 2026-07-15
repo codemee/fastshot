@@ -28,3 +28,10 @@ def test_tray_icon_fills_the_system_tray_slot(qt_app):
 
     assert width >= 14
     assert height >= 13
+
+
+def test_macos_tray_icon_fills_the_menu_bar_slot(qt_app):
+    width, height = _opaque_bounds(tray_icon(macos=True), 16)
+
+    assert width >= 15
+    assert height >= 15

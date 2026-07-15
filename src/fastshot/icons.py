@@ -20,21 +20,30 @@ def camera_icon(size: int = 64) -> QIcon:
     return icon
 
 
-def tray_icon() -> QIcon:
+def tray_icon(*, macos: bool = False) -> QIcon:
     icon = QIcon()
     for size in (16, 20, 24, 32, 48, 64):
-        icon.addPixmap(_camera_pixmap(size, tray=True))
+        icon.addPixmap(_camera_pixmap(size, tray=True, macos=macos))
     return icon
 
 
-def _camera_pixmap(size: int, tray: bool) -> QPixmap:
+def _camera_pixmap(size: int, tray: bool, macos: bool = False) -> QPixmap:
     pixmap = QPixmap(size, size)
     pixmap.fill(Qt.GlobalColor.transparent)
     painter = _painter(pixmap)
     scale = size / 64
     painter.setBrush(INK)
     painter.setPen(Qt.PenStyle.NoPen)
-    if tray:
+    if tray and macos:
+        # macOS menu-bar slots are shorter than Windows tray slots. Use a
+        # squarer camera that fills the available height instead of scaling
+        # the wider Windows artwork down to an undersized glyph.
+        body = (2, 14, 60, 48)
+        top = (15, 2, 28, 14)
+        outer_lens = (18, 23, 28, 28)
+        inner_lens = (26, 31, 12, 12)
+        radius = 7
+    elif tray:
         body = (3, 17, 58, 43)
         top = (17, 9, 24, 10)
         outer_lens = (20, 26, 24, 24)

@@ -150,7 +150,7 @@ class FastShotApplication(QObject):
         QTimer.singleShot(120, do_capture)
 
     def _build_tray(self) -> QSystemTrayIcon:
-        tray = QSystemTrayIcon(tray_icon(), self.app)
+        tray = QSystemTrayIcon(tray_icon(macos=sys.platform == "darwin"), self.app)
         tray.setToolTip("FastShot")
         menu = QMenu()
         self.exit_action = QAction(self.language_manager.text("exit"), menu)

@@ -46,7 +46,7 @@
 
 - `icons.py`
   - 程式內自繪 toolbar/system tray icon。
-  - 工作列與系統匣相機圖示分別調整透明邊距，並提供 16–64px 多解析度 pixmap，讓不同 Windows 顯示槽位維持清楚且一致的視覺占比。
+  - 工作列與系統匣相機圖示分別調整透明邊距，並提供 16–64px 多解析度 pixmap；macOS 選單列另使用接近正方形的相機配置填滿有限高度，讓各平台顯示槽位維持清楚且一致的視覺占比。
 
 - `settings.py`
   - `CaptureMode`、`Tool`、`CaptureSettings`、`DrawingSettings`。
