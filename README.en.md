@@ -15,15 +15,15 @@ FastShot is a Python desktop screenshot utility focused on global shortcuts, a p
 Run the release without installing it:
 
 ```powershell
-uvx --from "fastshot @ git+https://github.com/codemee/fastshot.git@v0.0.2" fastshot
+uvx --from "fastshot @ git+https://github.com/codemee/fastshot.git@latest" fastshot
 ```
 
-The first run downloads packages and creates a uv cache environment. Later runs reuse that cache. Use `uvx` for evaluation and `uv tool install` for regular use.
+The first run downloads packages and creates a uv cache environment. Later runs reuse that cache. `latest` is a floating tag that points to the newest stable release. Use `uvx` for evaluation and `uv tool install` for regular use.
 
 Install the release from GitHub:
 
 ```powershell
-uv tool install "fastshot @ git+https://github.com/codemee/fastshot.git@v0.0.2"
+uv tool install "fastshot @ git+https://github.com/codemee/fastshot.git@latest"
 fastshot
 ```
 
