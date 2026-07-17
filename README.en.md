@@ -60,7 +60,7 @@ Images can also be added by drag-and-drop or clipboard paste. A dropped image op
 - `Alt+Shift+F`: Capture the full screen
 - `Alt+Shift+W`: Select and capture a window or control
 
-On macOS, replace `Alt` with `Option`. On first use, grant Screen Recording and Accessibility permissions when prompted; FastShot may need to be restarted afterward.
+On macOS, replace `Alt` with `Option`. On first use, grant Screen Recording and Accessibility permissions when prompted. FastShot currently runs through `uv`/`uvx` rather than as a packaged macOS app, so the permission entry in System Settings usually belongs to the app that launched the command, such as Terminal, iTerm2, or an IDE. After granting access, fully quit and reopen that host app, then run FastShot again.
 
 Editor shortcuts:
 

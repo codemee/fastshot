@@ -30,7 +30,7 @@ Image drag/drop and paste use Qt `QMimeData`, `QUrl`, and clipboard APIs. On mac
 - Current `NSCursor` image, hotspot, and position are included best-effort.
 - Shared Qt tray, editor, clipboard, and save workflows are used.
 
-First launch requests Accessibility permission; first capture requests Screen Recording permission. Fully quit and restart FastShot after changing permissions. Without Accessibility permission, global shortcuts and control selection may be unavailable, while window hit testing falls back best-effort.
+First launch requests Accessibility permission; first capture requests Screen Recording permission. The project currently runs through `uv`/`uvx` and is not packaged as a standalone macOS app, so the entries under **System Settings → Privacy & Security → Accessibility / Screen Recording** usually belong to the app that launched the `uv` command rather than to FastShot. This is commonly Terminal, iTerm2, Warp, or an IDE host. Enable both permissions for the app that actually launches FastShot; after changing them, fully quit and reopen that host app, then run FastShot again. Without Accessibility permission, global shortcuts and control selection may be unavailable, while window hit testing falls back best-effort.
 
 ### Linux
 

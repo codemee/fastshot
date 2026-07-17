@@ -61,7 +61,7 @@ uv run fastshot
 - `Alt+Shift+F`: 擷取全螢幕
 - `Alt+Shift+W`: 選取視窗或控制項後擷取
 
-macOS 使用相同字母組合，將 `Alt` 改為 `Option`。首次執行時，請依系統提示授予「螢幕錄製」與「輔助使用」權限；授權後可能需要重新啟動 FastShot。
+macOS 使用相同字母組合，將 `Alt` 改為 `Option`。首次執行時，請依系統提示授予「螢幕錄製」與「輔助使用」權限。目前 FastShot 是透過 `uv`／`uvx` 執行，而非封裝成獨立的 macOS App，因此系統設定中的授權對象通常是啟動指令所在的 App，例如「終端機」、iTerm2 或 IDE。授權後請完全結束並重新開啟該 App，再重新執行 FastShot。
 
 編輯工具快捷鍵：
 
