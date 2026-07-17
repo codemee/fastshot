@@ -13,6 +13,7 @@ Image drag/drop and paste use Qt `QMimeData`, `QUrl`, and clipboard APIs. On mac
 ### Windows
 
 - Global shortcuts use `RegisterHotKey` and consume `WM_HOTKEY`.
+- The toolbar keyboard icon configures all four capture shortcuts; Windows probes `RegisterHotKey` conflicts before applying them.
 - Full-screen/region capture uses `mss` with Pillow `ImageGrab` fallback.
 - Focused-window bounds use DWM extended frame bounds.
 - Window/control selection prefers UI Automation with HWND fallback.
@@ -22,6 +23,7 @@ Image drag/drop and paste use Qt `QMimeData`, `QUrl`, and clipboard APIs. On mac
 ### macOS
 
 - Quartz event taps consume `Option+Shift+A/R/F/W`.
+- The shortcut listener supports user-configured Ctrl/Shift/Option plus A–Z combinations, persisted with `QSettings`.
 - Screen Recording permission is checked/requested.
 - Accessibility `AXFocusedWindow` is preferred; Core Graphics window fallback avoids transient browser popups.
 - Accessibility hit testing finds the smallest valid element under the pointer and clamps results to the owning window.
@@ -51,6 +53,8 @@ Linux is not currently a primary target. X11 and Wayland differ substantially in
 ## Manual Acceptance Checklist
 
 - Shortcuts trigger capture and are not forwarded to the focused application.
+- The shortcut panel opens with the active values; **Use defaults** changes only the pending panel values, OK applies and persists them, and Cancel leaves the active settings unchanged.
+- On macOS, custom Ctrl/Shift/Option plus letter combinations trigger the intended capture mode and remain configured after restart.
 - Immediate and delayed capture resolve the target first and capture the live image at countdown completion.
 - Full-screen, region, focused-window, and selected window/control capture work.
 - Browser transient URLs/tooltips are not mistaken for the focused window.

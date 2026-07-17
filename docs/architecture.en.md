@@ -20,6 +20,7 @@ This document introduces the FastShot codebase. Read [cross-platform.en.md](cros
 - `document.py`: tracks title, path, and dirty/unsaved state through `ShotDocument`.
 - `icons.py`: draws toolbar and tray icons in code. The taskbar and system-tray camera icons use separately tuned transparent margins and 16–64 px pixmaps; the macOS menu bar uses a squarer camera layout that fills its limited height so the visual weight stays clear and consistent across platforms.
 - `settings.py`: defines `CaptureMode`, `Tool`, `CaptureSettings`, and `DrawingSettings`.
+- `hotkeys.py`: defines configurable combinations for the four capture modes, validates them, and persists them with `QSettings`. The UI edits a temporary copy; Windows probes conflicts with `RegisterHotKey` and replaces active registrations only after every new shortcut succeeds.
 - `theme.py`: manages System, Light, and Dark modes through `QSettings`, application palettes/stylesheets, and theme-aware icon redraw. `ArrowSpinBox` provides consistent cross-platform numeric controls.
 - `i18n.py`: manages System, Traditional Chinese, and English modes. It detects the system language, persists overrides, and emits changes that retranslate the editor/tray. Tooltips combine translated labels with `QAction` shortcuts.
 - `qt_image.py`: converts between Pillow and Qt image types.

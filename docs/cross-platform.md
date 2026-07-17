@@ -18,6 +18,7 @@ Windows 是目前主要實作平台。
 已實作：
 
 - 全域快捷鍵：`RegisterHotKey` 接收 `WM_HOTKEY`，避免快捷鍵送到焦點視窗。
+- 可由工具列鍵盤圖示設定四種截圖快捷鍵；Windows 在套用前以 `RegisterHotKey` 探測是否被其他程式占用。
 - 全螢幕/矩形擷取：`mss`，失敗時 fallback 到 Pillow `ImageGrab`。
 - 焦點視窗擷取：DWM `DWMWA_EXTENDED_FRAME_BOUNDS`，避免截到不可見 resize frame。
 - 選取視窗/控制項：UI Automation 優先，傳統 HWND hit-test fallback。
@@ -29,6 +30,7 @@ Windows 是目前主要實作平台。
 已實作：
 
 - Quartz event tap 全域快捷鍵，攔截並 consume `Option+Shift+A/R/F/W`。
+- 快捷鍵 listener 支援使用者設定的 Ctrl／Shift／Option 與 A–Z 字母組合，設定以 `QSettings` 保留。
 - 透過 Screen Recording API 檢查並要求螢幕錄製權限。
 - 優先使用 Accessibility `AXFocusedWindow` 擷取焦點視窗；失敗時才從前景程序的 Core Graphics 視窗選擇最大正常視窗，避免 Chrome 連結網址等 transient popup 被誤判為焦點視窗。
 - 使用 Accessibility API hit-test 最小控制項，並將 bounds 限制在游標下視窗內；無效或未包含游標的結果會 fallback 至游標下視窗。
@@ -76,6 +78,8 @@ Linux 尚未作為主要目標。Wayland/X11 差異很大，尤其是全域快�
 每個平台至少要手動驗收：
 
 - 快捷鍵可觸發，且不把按鍵送給焦點 app。
+- 快捷鍵設定面板會顯示目前值；「使用預設」只改變面板暫存值，OK 套用並保留，Cancel 不改變目前設定。
+- macOS 自訂 Ctrl／Shift／Option 與字母組合可觸發正確的截圖方式，重新啟動後設定仍保留。
 - 無延遲和有延遲流程都符合：先決定目標，倒數後截即時畫面。
 - 全螢幕、矩形、焦點視窗、選取視窗/控制項都可用。
 - Chrome 等具有 transient popup 的應用程式，焦點視窗擷取不會誤截連結網址或 tooltip。

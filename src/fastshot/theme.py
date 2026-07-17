@@ -151,6 +151,24 @@ def _stylesheet(mode: ThemeMode) -> str:
             }
             QSpinBox:hover, QSpinBox:focus { border-color: #8ab4f8; }
             QSpinBox:disabled { background: #303134; color: #9aa0a6; border-color: #4b4f54; }
+            QComboBox {
+                background: #3c4043;
+                color: #f1f3f4;
+                border: 1px solid #5f6368;
+                border-radius: 3px;
+                padding: 3px 22px 3px 7px;
+                selection-background-color: #3b82c4;
+            }
+            QComboBox:hover, QComboBox:focus { border-color: #8ab4f8; }
+            QComboBox::drop-down { border: 0; width: 22px; }
+            QComboBox QAbstractItemView {
+                background: #3c4043;
+                color: #f1f3f4;
+                border: 1px solid #5f6368;
+                selection-background-color: #3b82c4;
+                selection-color: #ffffff;
+                outline: 0;
+            }
             QSpinBox QToolButton[spinArrow="true"] {
                 background: #4b4f54;
                 border: 0;
@@ -223,6 +241,24 @@ def _stylesheet(mode: ThemeMode) -> str:
             selection-background-color: #1971c2;
         }
         QSpinBox:hover, QSpinBox:focus { border-color: #339af0; }
+        QComboBox {
+            background: #ffffff;
+            color: #343a40;
+            border: 1px solid #adb5bd;
+            border-radius: 3px;
+            padding: 3px 22px 3px 7px;
+            selection-background-color: #1971c2;
+        }
+        QComboBox:hover, QComboBox:focus { border-color: #339af0; }
+        QComboBox::drop-down { border: 0; width: 22px; }
+        QComboBox QAbstractItemView {
+            background: #ffffff;
+            color: #343a40;
+            border: 1px solid #adb5bd;
+            selection-background-color: #1971c2;
+            selection-color: #ffffff;
+            outline: 0;
+        }
         QSpinBox QToolButton[spinArrow="true"] {
             background: #f1f3f5;
             border: 0;

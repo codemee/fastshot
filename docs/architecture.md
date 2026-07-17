@@ -51,6 +51,10 @@
 - `settings.py`
   - `CaptureMode`、`Tool`、`CaptureSettings`、`DrawingSettings`。
 
+- `hotkeys.py`
+  - 定義四種截圖方式的可設定組合鍵、格式驗證與 `QSettings` 持久化。
+  - UI 只編輯暫存副本；Windows 透過 `RegisterHotKey` 探測衝突，確認成功後才替換目前註冊。
+
 - `theme.py`
   - 管理跟隨系統、淺色與深色三種模式，透過 `QSettings` 持久化，並在系統配色變更時即時套用。
   - `ThemeManager` 在 application 層建立並注入 `EditorWindow`，統一管理 palette、stylesheet 與依主題重繪的工具列圖示。

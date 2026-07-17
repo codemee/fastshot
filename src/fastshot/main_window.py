@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import string
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 from PIL import Image
@@ -8,7 +10,9 @@ from PySide6.QtCore import QPoint, QSize, Qt, Signal
 from PySide6.QtGui import QAction, QActionGroup, QColor, QIcon, QKeySequence, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QAbstractButton,
+    QCheckBox,
     QColorDialog,
+    QComboBox,
     QFileDialog,
     QGridLayout,
     QHBoxLayout,
@@ -33,9 +37,10 @@ from PySide6.QtWidgets import (
 from fastshot.canvas import CANVAS_PADDING, ImageCanvas
 from fastshot.document import ShotDocument, make_tab_title
 from fastshot.icons import camera_icon, tool_icon
+from fastshot.hotkeys import CAPTURE_MODES, HotkeyCombination, default_hotkeys
 from fastshot.i18n import LanguageManager, LanguageMode
 from fastshot.qt_image import pil_to_qimage
-from fastshot.settings import CaptureSettings, DrawingSettings, Tool
+from fastshot.settings import CaptureMode, CaptureSettings, DrawingSettings, Tool
 from fastshot.theme import ThemeManager, ThemeMode
 
 IMAGE_SUFFIXES = {
@@ -147,6 +152,9 @@ class EditorWindow(QMainWindow):
         self.setAcceptDrops(True)
         self.settings = DrawingSettings.default()
         self.capture_settings = CaptureSettings()
+        self.hotkey_bindings = default_hotkeys()
+        self._hotkey_validator: Callable | None = None
+        self._hotkey_applier: Callable | None = None
         self.active_tool = Tool.PEN
         self.tabs = QTabWidget()
         self.tabs.setTabsClosable(True)
@@ -434,6 +442,10 @@ class EditorWindow(QMainWindow):
         toolbar.addAction(self.delay_action)
 
         toolbar.addSeparator()
+        self.hotkey_action = QAction(tool_icon("keyboard"), "Capture shortcuts", self)
+        self.hotkey_action.triggered.connect(self._show_hotkey_panel)
+        toolbar.addAction(self.hotkey_action)
+
         self.theme_action = QAction(self._theme_icon(), "Theme: follow system", self)
         self.theme_action.triggered.connect(self._cycle_theme)
         toolbar.addAction(self.theme_action)
@@ -594,6 +606,136 @@ class EditorWindow(QMainWindow):
         action.setDefaultWidget(panel)
         menu.addAction(action)
         menu.exec(self.mapToGlobal(self._toolbar_anchor(self.delay_action)))
+
+    def configure_hotkeys(
+        self,
+        bindings,
+        validator: Callable,
+        applier: Callable,
+    ) -> None:
+        self.hotkey_bindings = dict(bindings)
+        self._hotkey_validator = validator
+        self._hotkey_applier = applier
+
+    def _show_hotkey_panel(self) -> None:
+        menu = self._create_hotkey_menu()
+        menu.exec(self.mapToGlobal(self._toolbar_anchor(self.hotkey_action)))
+
+    def _create_hotkey_menu(self) -> QMenu:
+        menu = QMenu(self)
+        menu.setObjectName("hotkeyMenu")
+        panel = QWidget()
+        panel.setObjectName("hotkeyPanel")
+        layout = QGridLayout(panel)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setHorizontalSpacing(10)
+        layout.setVerticalSpacing(7)
+        for column, key in enumerate(("capture_type", "ctrl", "shift", "alt", "letter")):
+            layout.addWidget(QLabel(self._tr(key)), 0, column)
+
+        controls = {}
+        mode_keys = {
+            CaptureMode.ACTIVE_WINDOW: "capture_active_window",
+            CaptureMode.REGION: "capture_region",
+            CaptureMode.FULLSCREEN: "capture_fullscreen",
+            CaptureMode.WINDOW_UNDER_CURSOR: "capture_window_under_cursor",
+        }
+        for row, mode in enumerate(CAPTURE_MODES, start=1):
+            combination = self.hotkey_bindings[mode]
+            ctrl = QCheckBox()
+            shift = QCheckBox()
+            alt = QCheckBox()
+            letter = QComboBox()
+            ctrl.setObjectName(f"{mode.value}Ctrl")
+            shift.setObjectName(f"{mode.value}Shift")
+            alt.setObjectName(f"{mode.value}Alt")
+            letter.setObjectName(f"{mode.value}Letter")
+            letter.addItems(string.ascii_uppercase)
+            ctrl.setChecked(combination.ctrl)
+            shift.setChecked(combination.shift)
+            alt.setChecked(combination.alt)
+            letter.setCurrentText(combination.letter)
+            controls[mode] = (ctrl, shift, alt, letter)
+            layout.addWidget(QLabel(self._tr(mode_keys[mode])), row, 0)
+            layout.addWidget(ctrl, row, 1, Qt.AlignmentFlag.AlignCenter)
+            layout.addWidget(shift, row, 2, Qt.AlignmentFlag.AlignCenter)
+            layout.addWidget(alt, row, 3, Qt.AlignmentFlag.AlignCenter)
+            layout.addWidget(letter, row, 4)
+
+        warning = QLabel()
+        warning.setObjectName("hotkeyWarning")
+        warning.setWordWrap(True)
+        warning.setStyleSheet("color: #e03131;")
+        layout.addWidget(warning, len(CAPTURE_MODES) + 1, 0, 1, 5)
+        buttons = QHBoxLayout()
+        default_button = QPushButton(self._tr("use_defaults"))
+        default_button.setObjectName("hotkeyDefaultButton")
+        buttons.addWidget(default_button)
+        buttons.addStretch()
+        ok_button = QPushButton("OK")
+        ok_button.setObjectName("hotkeyOkButton")
+        cancel_button = QPushButton("Cancel")
+        cancel_button.setObjectName("hotkeyCancelButton")
+        buttons.addWidget(ok_button)
+        buttons.addWidget(cancel_button)
+        layout.addLayout(buttons, len(CAPTURE_MODES) + 2, 0, 1, 5)
+
+        def selected_bindings():
+            return {
+                mode: HotkeyCombination(
+                    letter.currentText(), ctrl.isChecked(), shift.isChecked(), alt.isChecked()
+                )
+                for mode, (ctrl, shift, alt, letter) in controls.items()
+            }
+
+        def update_state() -> None:
+            for ctrl, shift, alt, _letter in controls.values():
+                has_primary_modifier = ctrl.isChecked() or alt.isChecked()
+                if not has_primary_modifier and shift.isChecked():
+                    shift.setChecked(False)
+                shift.setEnabled(has_primary_modifier)
+            if self._hotkey_validator is None:
+                valid, message = True, ""
+            else:
+                valid, message = self._hotkey_validator(selected_bindings())
+            warning.setText(message)
+            warning.setVisible(not valid)
+            ok_button.setEnabled(valid)
+
+        def apply() -> None:
+            if self._hotkey_applier is None:
+                menu.close()
+                return
+            valid, message = self._hotkey_applier(selected_bindings())
+            if valid:
+                menu.close()
+                return
+            warning.setText(message)
+            warning.show()
+            ok_button.setEnabled(False)
+
+        def use_defaults() -> None:
+            for mode, combination in default_hotkeys().items():
+                ctrl, shift, alt, letter = controls[mode]
+                ctrl.setChecked(combination.ctrl)
+                alt.setChecked(combination.alt)
+                shift.setChecked(combination.shift)
+                letter.setCurrentText(combination.letter)
+            update_state()
+
+        for ctrl, shift, alt, letter in controls.values():
+            ctrl.toggled.connect(update_state)
+            shift.toggled.connect(update_state)
+            alt.toggled.connect(update_state)
+            letter.currentTextChanged.connect(update_state)
+        ok_button.clicked.connect(apply)
+        cancel_button.clicked.connect(menu.close)
+        default_button.clicked.connect(use_defaults)
+        action = QWidgetAction(menu)
+        action.setDefaultWidget(panel)
+        menu.addAction(action)
+        update_state()
+        return menu
 
     def _cycle_theme(self) -> None:
         modes = (ThemeMode.SYSTEM, ThemeMode.LIGHT, ThemeMode.DARK)
@@ -902,6 +1044,7 @@ class EditorWindow(QMainWindow):
             (self.zoom_out_action, "zoom_out"),
             (self.zoom_reset_action, "reset_zoom"),
             (self.delay_action, "delay"),
+            (self.hotkey_action, "capture_shortcuts"),
         )
         for action, key in labels:
             label = self._tr(key)
@@ -948,6 +1091,7 @@ class EditorWindow(QMainWindow):
             (self.save_as_action, "save_as"),
             (self.zoom_in_action, "zoom_in"),
             (self.zoom_out_action, "zoom_out"),
+            (self.hotkey_action, "keyboard"),
         ):
             action.setIcon(tool_icon(name, dark=dark))
         self.style_action.setIcon(self._style_icon())

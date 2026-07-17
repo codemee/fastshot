@@ -242,7 +242,8 @@ def _tuple_rect_contains(rect: tuple[int, int, int, int], x: int, y: int) -> boo
 
 @dataclass
 class MacHotkeyListener:
-    callback: Callable[[str], None]
+    callback: Callable[[object], None]
+    bindings: tuple[object, ...]
 
     def __post_init__(self) -> None:
         self._thread: threading.Thread | None = None
@@ -286,12 +287,29 @@ class MacHotkeyListener:
             quartz.CGEventTapEnable(self._tap, True)
             return event
         flags = quartz.CGEventGetFlags(event)
-        needed = quartz.kCGEventFlagMaskAlternate | quartz.kCGEventFlagMaskShift
-        if flags & needed != needed:
-            return event
         keycode = quartz.CGEventGetIntegerValueField(event, quartz.kCGKeyboardEventKeycode)
-        key = {0: "a", 3: "f", 15: "r", 13: "w"}.get(keycode)
-        if key is None:
+        key = {
+            0: "a", 11: "b", 8: "c", 2: "d", 14: "e", 3: "f", 5: "g", 4: "h",
+            34: "i", 38: "j", 40: "k", 37: "l", 46: "m", 45: "n", 31: "o", 35: "p",
+            12: "q", 15: "r", 1: "s", 17: "t", 32: "u", 9: "v", 13: "w", 7: "x",
+            16: "y", 6: "z",
+        }.get(keycode)
+        candidates = [item for item in self.bindings if item.letter.lower() == key]
+        if not candidates:
             return event
-        self.callback(key)
-        return None  # consume the shortcut instead of forwarding it
+        relevant = (
+            quartz.kCGEventFlagMaskControl
+            | quartz.kCGEventFlagMaskShift
+            | quartz.kCGEventFlagMaskAlternate
+        )
+        actual = flags & relevant
+        for combination in candidates:
+            needed = (
+                (quartz.kCGEventFlagMaskControl if combination.ctrl else 0)
+                | (quartz.kCGEventFlagMaskShift if combination.shift else 0)
+                | (quartz.kCGEventFlagMaskAlternate if combination.alt else 0)
+            )
+            if actual == needed:
+                self.callback(combination)
+                return None  # consume the shortcut instead of forwarding it
+        return event

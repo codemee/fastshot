@@ -193,6 +193,23 @@ def tool_icon(
             font.setBold(True)
             painter.setFont(font)
             painter.drawText(QRect(19, 19, 12, 12), Qt.AlignmentFlag.AlignCenter, badge)
+    elif name == "keyboard":
+        painter.setPen(
+            QPen(
+                base_ink,
+                1.3,
+                Qt.PenStyle.SolidLine,
+                Qt.PenCapStyle.RoundCap,
+                Qt.PenJoinStyle.RoundJoin,
+            )
+        )
+        painter.drawRoundedRect(4, 8, 24, 17, 3, 3)
+        painter.setBrush(base_ink)
+        painter.setPen(Qt.PenStyle.NoPen)
+        for y in (12, 17):
+            for x in (8, 13, 18, 23):
+                painter.drawRoundedRect(x, y, 2.5, 2.5, 0.5, 0.5)
+        painter.drawRoundedRect(10, 21, 12, 2, 0.6, 0.6)
     elif name == "theme":
         if badge == "system":
             painter.setBrush(Qt.BrushStyle.NoBrush)
