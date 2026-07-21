@@ -51,7 +51,7 @@ FastShot starts with its editor hidden and remains in the system tray. Double-cl
 The theme button cycles through Follow System, Light, and Dark. The language button cycles through Follow System, Traditional Chinese, and English. Both choices are persisted. Toolbar tooltips follow the selected language and include shortcuts where available.
 The keyboard icon opens the global capture-shortcut settings for all four capture modes. Each shortcut can use Ctrl, Shift, Option/Alt, and an A–Z letter; Shift must be combined with Ctrl or Option/Alt. **Use defaults** restores the default combinations in the panel. Changes are persisted only after OK successfully registers every shortcut; Cancel keeps the active settings unchanged.
 
-Images can also be added by drag-and-drop or clipboard paste. A dropped image opens under its full file name, retains its source path, and is saved back after editing. Pasted images create new unsaved tabs using the screenshot timestamp naming format. Paste uses `Ctrl+V` on Windows/Linux and `Command+V` on macOS.
+Images can also be added by drag-and-drop or clipboard paste. A dropped image opens under its full file name, retains its source path, and is saved back after editing. Pasted images create new unsaved tabs using the screenshot timestamp naming format. After a successful save, FastShot remembers the containing directory and uses it when opening the Save dialog for other unsaved tabs. Paste uses `Ctrl+V` on Windows/Linux and `Command+V` on macOS.
 
 ## Capture Shortcuts
 

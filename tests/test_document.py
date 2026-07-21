@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from PIL import Image
-from PySide6.QtCore import QMimeData, QUrl
+from PySide6.QtCore import QMimeData, QSettings, QUrl
 from PySide6.QtGui import QImage
 
 from fastshot.document import ShotDocument, make_tab_title
@@ -95,3 +95,100 @@ def test_paste_image_uses_screenshot_title(qt_app):
 
     assert window.tabs.count() == 1
     assert len(window.tabs.tabText(0)) == len("26-07-09-050607")
+
+
+def test_unsaved_document_uses_persisted_last_save_directory(qt_app, tmp_path):
+    from fastshot.main_window import LAST_SAVE_DIRECTORY_KEY, EditorWindow
+
+    settings_path = tmp_path / "settings.ini"
+    save_directory = tmp_path / "screenshots"
+    save_directory.mkdir()
+    settings = QSettings(str(settings_path), QSettings.Format.IniFormat)
+    settings.setValue(LAST_SAVE_DIRECTORY_KEY, str(save_directory))
+    settings.sync()
+
+    reloaded_settings = QSettings(str(settings_path), QSettings.Format.IniFormat)
+    window = EditorWindow(app_settings=reloaded_settings)
+    doc = ShotDocument("new-shot", None)
+
+    assert window._default_save_path(doc) == save_directory / "new-shot.png"
+
+
+def test_document_path_takes_priority_over_last_save_directory(qt_app, tmp_path):
+    from fastshot.main_window import LAST_SAVE_DIRECTORY_KEY, EditorWindow
+
+    settings = QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat)
+    settings.setValue(LAST_SAVE_DIRECTORY_KEY, str(tmp_path / "recent"))
+    window = EditorWindow(app_settings=settings)
+    document_path = tmp_path / "original" / "existing.jpg"
+
+    assert (
+        window._default_save_path(ShotDocument("existing", None, path=document_path))
+        == document_path
+    )
+
+
+def test_missing_last_save_directory_falls_back_to_working_directory(
+    qt_app, tmp_path, monkeypatch
+):
+    from fastshot.main_window import LAST_SAVE_DIRECTORY_KEY, EditorWindow
+
+    settings = QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat)
+    settings.setValue(LAST_SAVE_DIRECTORY_KEY, str(tmp_path / "missing"))
+    window = EditorWindow(app_settings=settings)
+    monkeypatch.chdir(tmp_path)
+
+    assert window._default_save_path(ShotDocument("new-shot", None)) == tmp_path / "new-shot.png"
+
+
+def test_successful_save_updates_last_save_directory(qt_app, tmp_path):
+    from fastshot.main_window import LAST_SAVE_DIRECTORY_KEY, EditorWindow
+
+    settings_path = tmp_path / "settings.ini"
+    settings = QSettings(str(settings_path), QSettings.Format.IniFormat)
+    window = EditorWindow(app_settings=settings)
+    image = QImage(6, 5, QImage.Format.Format_ARGB32)
+    image.fill(0)
+    window._add_image(image, "new-shot")
+    target_directory = tmp_path / "saved"
+    target_directory.mkdir()
+
+    window._save_to_path(window.documents[0], target_directory / "result.png")
+    settings.sync()
+    reloaded_settings = QSettings(str(settings_path), QSettings.Format.IniFormat)
+
+    assert reloaded_settings.value(LAST_SAVE_DIRECTORY_KEY) == str(target_directory)
+
+
+def test_failed_save_does_not_replace_last_save_directory(qt_app, tmp_path, monkeypatch):
+    import fastshot.main_window as main_window
+
+    previous_directory = tmp_path / "previous"
+    previous_directory.mkdir()
+    settings = QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat)
+    settings.setValue(main_window.LAST_SAVE_DIRECTORY_KEY, str(previous_directory))
+    window = main_window.EditorWindow(app_settings=settings)
+    image = QImage(6, 5, QImage.Format.Format_ARGB32)
+    window._add_image(image, "new-shot")
+    monkeypatch.setattr(main_window.QMessageBox, "warning", lambda *_args: None)
+
+    window._save_to_path(window.documents[0], tmp_path / "missing" / "failed.png")
+
+    assert settings.value(main_window.LAST_SAVE_DIRECTORY_KEY) == str(previous_directory)
+
+
+def test_cancelled_save_does_not_replace_last_save_directory(qt_app, tmp_path, monkeypatch):
+    import fastshot.main_window as main_window
+
+    previous_directory = tmp_path / "previous"
+    previous_directory.mkdir()
+    settings = QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat)
+    settings.setValue(main_window.LAST_SAVE_DIRECTORY_KEY, str(previous_directory))
+    window = main_window.EditorWindow(app_settings=settings)
+    image = QImage(6, 5, QImage.Format.Format_ARGB32)
+    window._add_image(image, "new-shot")
+    monkeypatch.setattr(main_window.QFileDialog, "getSaveFileName", lambda *_args: ("", ""))
+
+    window.save_current_as()
+
+    assert settings.value(main_window.LAST_SAVE_DIRECTORY_KEY) == str(previous_directory)

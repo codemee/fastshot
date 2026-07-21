@@ -40,7 +40,7 @@ This document introduces the FastShot codebase. Read [cross-platform.en.md](cros
 
 Editing directly mutates a `QImage`; the previous image is copied to an undo stack before each operation. This is intentionally simple and is not a vector/object model. Re-selectable objects, editable text, or layered exports would require a redesigned canvas model.
 
-Dropped images retain their source path and start clean. The first edit marks the document dirty; Save writes to the source. Clipboard images have no source path, use `YY-MM-DD-HHMMSS`, and open Save As on first save.
+Dropped images retain their source path and start clean. The first edit marks the document dirty; Save writes to the source. Clipboard images have no source path, use `YY-MM-DD-HHMMSS`, and open Save As on first save. After each successful save, the containing directory is persisted through `QSettings`; other tabs without their own paths use that directory as the Save dialog's default location while retaining their own tab titles as the default file names.
 
 Cropping is also an image operation: releasing a dragged outer crop handle applies the crop and records an undo entry.
 

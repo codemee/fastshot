@@ -6,7 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from PIL import Image
-from PySide6.QtCore import QPoint, QSize, Qt, Signal
+from PySide6.QtCore import QPoint, QSettings, QSize, Qt, Signal
 from PySide6.QtGui import QAction, QActionGroup, QColor, QIcon, QKeySequence, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QAbstractButton,
@@ -55,6 +55,8 @@ IMAGE_SUFFIXES = {
     ".tiff",
     ".webp",
 }
+
+LAST_SAVE_DIRECTORY_KEY = "files/last_save_directory"
 
 
 def _align_scrollbars_to_image(area: QScrollArea) -> None:
@@ -142,12 +144,14 @@ class EditorWindow(QMainWindow):
         self,
         theme_manager: ThemeManager | None = None,
         language_manager: LanguageManager | None = None,
+        app_settings: QSettings | None = None,
     ) -> None:
         super().__init__()
         from PySide6.QtWidgets import QApplication
 
         self.theme_manager = theme_manager or ThemeManager(QApplication.instance())
         self.language_manager = language_manager or LanguageManager()
+        self.app_settings = app_settings if app_settings is not None else QSettings()
         self.setWindowIcon(camera_icon())
         self.setAcceptDrops(True)
         self.settings = DrawingSettings.default()
@@ -301,8 +305,7 @@ class EditorWindow(QMainWindow):
         canvas = self._current_canvas()
         if doc is None or canvas is None:
             return
-        default_name = doc.title if Path(doc.title).suffix else f"{doc.title}.png"
-        default_path = doc.path or Path.cwd() / default_name
+        default_path = self._default_save_path(doc)
         path, selected = QFileDialog.getSaveFileName(
             self,
             self._tr("save_screenshot"),
@@ -316,6 +319,17 @@ class EditorWindow(QMainWindow):
         if not target.suffix:
             target = target.with_suffix(".jpg" if "JPEG" in selected else ".png")
         self._save_to_path(doc, target)
+
+    def _default_save_path(self, doc: ShotDocument) -> Path:
+        if doc.path is not None:
+            return doc.path
+        default_name = doc.title if Path(doc.title).suffix else f"{doc.title}.png"
+        stored_directory = str(self.app_settings.value(LAST_SAVE_DIRECTORY_KEY, "") or "")
+        last_directory = Path(stored_directory) if stored_directory else None
+        default_directory = (
+            last_directory if last_directory is not None and last_directory.is_dir() else Path.cwd()
+        )
+        return default_directory / default_name
 
     def zoom_in(self) -> None:
         canvas = self._current_canvas()
@@ -794,6 +808,7 @@ class EditorWindow(QMainWindow):
             QMessageBox.warning(self, "FastShot", self._tr("save_failed", path=path))
             return
         doc.mark_saved(path)
+        self.app_settings.setValue(LAST_SAVE_DIRECTORY_KEY, str(path.parent))
         self._refresh_tabs()
 
     def _current_area(self) -> QScrollArea | None:
