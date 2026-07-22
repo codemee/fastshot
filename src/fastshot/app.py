@@ -11,7 +11,7 @@ from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon
 
 from fastshot.capture import CaptureService
 from fastshot.icons import tray_icon
-from fastshot.hotkeys import HotkeyCombination, HotkeyStore, validate_hotkeys
+from fastshot.hotkeys import HotkeyAction, HotkeyCombination, HotkeyStore, validate_hotkeys
 from fastshot.i18n import LanguageManager
 from fastshot.main_window import EditorWindow
 from fastshot.settings import CaptureMode
@@ -31,6 +31,7 @@ class MSG(ctypes.Structure):
 
 class HotkeyBridge(QObject):
     captureRequested = Signal(CaptureMode)
+    repeatRequested = Signal()
 
 
 class WindowsHotkeyFilter(QAbstractNativeEventFilter):
@@ -82,7 +83,10 @@ class WindowsHotkeyFilter(QAbstractNativeEventFilter):
         if binding is None:
             return False, 0
         _combination, mode = binding
-        self.bridge.captureRequested.emit(mode)
+        if mode == HotkeyAction.REPEAT:
+            self.bridge.repeatRequested.emit()
+        else:
+            self.bridge.captureRequested.emit(mode)
         return True, 0
 
     @classmethod
@@ -109,6 +113,7 @@ class FastShotApplication(QObject):
         self.hotkeys = self.hotkey_store.load()
         self.bridge = HotkeyBridge()
         self.bridge.captureRequested.connect(self.capture_mode)
+        self.bridge.repeatRequested.connect(self.repeat_capture)
         self.tray = self._build_tray()
         self.language_manager.changed.connect(self._language_changed)
         self._hotkey_handles: list[object] = []
@@ -134,6 +139,12 @@ class FastShotApplication(QObject):
         self.app.quit()
 
     def capture_mode(self, mode: CaptureMode) -> None:
+        self._start_capture(lambda: self.capture.capture(mode, self.window.capture_settings))
+
+    def repeat_capture(self) -> None:
+        self._start_capture(lambda: self.capture.repeat(self.window.capture_settings))
+
+    def _start_capture(self, capture) -> None:
         if self._capture_in_progress:
             return
         self._capture_in_progress = True
@@ -142,7 +153,7 @@ class FastShotApplication(QObject):
 
         def do_capture() -> None:
             try:
-                image = self.capture.capture(mode, self.window.capture_settings)
+                image = capture()
             except Exception as exc:  # pragma: no cover - UI guard
                 traceback.print_exc()
                 QMessageBox.warning(
@@ -198,10 +209,18 @@ class FastShotApplication(QObject):
                 from fastshot.platforms.macos import MacHotkeyListener, accessibility_allowed
 
                 accessibility_allowed(request=True)
-                modes = {combination: mode for mode, combination in bindings.items()}
+                actions = {combination: action for action, combination in bindings.items()}
+
+                def dispatch(combination) -> None:
+                    action = actions[combination]
+                    if action == HotkeyAction.REPEAT:
+                        self.bridge.repeatRequested.emit()
+                    else:
+                        self.bridge.captureRequested.emit(action)
+
                 self._mac_hotkey_listener = MacHotkeyListener(
-                    lambda combination: self.bridge.captureRequested.emit(modes[combination]),
-                    tuple(modes),
+                    dispatch,
+                    tuple(actions),
                 )
                 self._mac_hotkey_listener.start()
                 return True
@@ -217,14 +236,14 @@ class FastShotApplication(QObject):
                 QMessageBox.warning(self.window, "FastShot", f"Global hotkeys unavailable: {exc}")
             return False
 
-        for mode, combination in bindings.items():
+        for action, combination in bindings.items():
             shortcut = combination.display().lower()
             try:
-                handle = keyboard.add_hotkey(
-                    shortcut,
-                    lambda capture_mode=mode: self.bridge.captureRequested.emit(capture_mode),
-                    suppress=True,
-                )
+                if action == HotkeyAction.REPEAT:
+                    callback = lambda: self.bridge.repeatRequested.emit()
+                else:
+                    callback = lambda capture_mode=action: self.bridge.captureRequested.emit(capture_mode)
+                handle = keyboard.add_hotkey(shortcut, callback, suppress=True)
                 self._hotkey_handles.append(handle)
             except Exception as exc:
                 self._unregister_hotkeys()

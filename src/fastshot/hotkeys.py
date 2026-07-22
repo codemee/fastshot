@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 
 from PySide6.QtCore import QSettings
 
@@ -13,6 +14,13 @@ CAPTURE_MODES = (
     CaptureMode.FULLSCREEN,
     CaptureMode.WINDOW_UNDER_CURSOR,
 )
+
+
+class HotkeyAction(str, Enum):
+    REPEAT = "repeat"
+
+
+HOTKEY_ACTIONS = (*CAPTURE_MODES, HotkeyAction.REPEAT)
 
 
 @dataclass(frozen=True)
@@ -36,17 +44,20 @@ class HotkeyCombination:
         return "+".join((*parts, self.letter))
 
 
-def default_hotkeys() -> dict[CaptureMode, HotkeyCombination]:
+def default_hotkeys() -> dict[CaptureMode | HotkeyAction, HotkeyCombination]:
     return {
         CaptureMode.ACTIVE_WINDOW: HotkeyCombination("A", shift=True, alt=True),
         CaptureMode.REGION: HotkeyCombination("R", shift=True, alt=True),
         CaptureMode.FULLSCREEN: HotkeyCombination("F", shift=True, alt=True),
         CaptureMode.WINDOW_UNDER_CURSOR: HotkeyCombination("W", shift=True, alt=True),
+        HotkeyAction.REPEAT: HotkeyCombination("Q", shift=True, alt=True),
     }
 
 
-def validate_hotkeys(bindings: dict[CaptureMode, HotkeyCombination]) -> str | None:
-    if set(bindings) != set(CAPTURE_MODES):
+def validate_hotkeys(
+    bindings: dict[CaptureMode | HotkeyAction, HotkeyCombination],
+) -> str | None:
+    if set(bindings) != set(HOTKEY_ACTIONS):
         return "incomplete"
     if any(not combination.is_valid() for combination in bindings.values()):
         return "invalid"
@@ -59,10 +70,10 @@ class HotkeyStore:
     def __init__(self, settings: QSettings | None = None) -> None:
         self.settings = settings or QSettings()
 
-    def load(self) -> dict[CaptureMode, HotkeyCombination]:
+    def load(self) -> dict[CaptureMode | HotkeyAction, HotkeyCombination]:
         defaults = default_hotkeys()
-        result: dict[CaptureMode, HotkeyCombination] = {}
-        for mode in CAPTURE_MODES:
+        result: dict[CaptureMode | HotkeyAction, HotkeyCombination] = {}
+        for mode in HOTKEY_ACTIONS:
             prefix = f"hotkeys/{mode.value}"
             default = defaults[mode]
             result[mode] = HotkeyCombination(
@@ -73,7 +84,7 @@ class HotkeyStore:
             )
         return result if validate_hotkeys(result) is None else defaults
 
-    def save(self, bindings: dict[CaptureMode, HotkeyCombination]) -> None:
+    def save(self, bindings: dict[CaptureMode | HotkeyAction, HotkeyCombination]) -> None:
         for mode, combination in bindings.items():
             prefix = f"hotkeys/{mode.value}"
             self.settings.setValue(f"{prefix}/letter", combination.letter)

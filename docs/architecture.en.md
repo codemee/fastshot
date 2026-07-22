@@ -20,7 +20,7 @@ This document introduces the FastShot codebase. Read [cross-platform.en.md](cros
 - `document.py`: tracks title, path, and dirty/unsaved state through `ShotDocument`.
 - `icons.py`: draws toolbar and tray icons in code. The taskbar and system-tray camera icons use separately tuned transparent margins and 16–64 px pixmaps; the macOS menu bar uses a squarer camera layout that fills its limited height so the visual weight stays clear and consistent across platforms.
 - `settings.py`: defines `CaptureMode`, `Tool`, `CaptureSettings`, and `DrawingSettings`.
-- `hotkeys.py`: defines configurable combinations for the four capture modes, validates them, and persists them with `QSettings`. The UI edits a temporary copy; Windows probes conflicts with `RegisterHotKey` and replaces active registrations only after every new shortcut succeeds.
+- `hotkeys.py`: defines configurable combinations for the four capture modes and the repeat action, validates them, and persists them with `QSettings`. The UI edits a temporary copy; Windows probes conflicts with `RegisterHotKey` and replaces active registrations only after every new shortcut succeeds.
 - `theme.py`: manages System, Light, and Dark modes through `QSettings`, application palettes/stylesheets, and theme-aware icon redraw. `ArrowSpinBox` provides consistent cross-platform numeric controls.
 - `i18n.py`: manages System, Traditional Chinese, and English modes. It detects the system language, persists overrides, and emits changes that retranslate the editor/tray. Tooltips combine translated labels with `QAction` shortcuts.
 - `qt_image.py`: converts between Pillow and Qt image types.
@@ -35,6 +35,8 @@ This document introduces the FastShot codebase. Read [cross-platform.en.md](cros
 6. If enabled, the current real pointer is composited best-effort.
 7. `EditorWindow.add_shot()` creates a tab aligned to the editor's top-left.
 8. `EditorWindow.copy_current()` copies the image to the clipboard.
+
+`Alt+Shift+Q` repeats the previous successful capture by default and can be customized in the shortcut panel. Region capture preserves fixed coordinates; window/control capture preserves the native target identity and resolves its current bounds when repeated. If that target no longer exists, no error or new tab is shown.
 
 ## Editing Model
 

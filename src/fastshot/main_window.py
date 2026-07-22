@@ -37,7 +37,7 @@ from PySide6.QtWidgets import (
 from fastshot.canvas import CANVAS_PADDING, ImageCanvas
 from fastshot.document import ShotDocument, make_tab_title
 from fastshot.icons import camera_icon, tool_icon
-from fastshot.hotkeys import CAPTURE_MODES, HotkeyCombination, default_hotkeys
+from fastshot.hotkeys import HOTKEY_ACTIONS, HotkeyAction, HotkeyCombination, default_hotkeys
 from fastshot.i18n import LanguageManager, LanguageMode
 from fastshot.qt_image import pil_to_qimage
 from fastshot.settings import CaptureMode, CaptureSettings, DrawingSettings, Tool
@@ -653,8 +653,9 @@ class EditorWindow(QMainWindow):
             CaptureMode.REGION: "capture_region",
             CaptureMode.FULLSCREEN: "capture_fullscreen",
             CaptureMode.WINDOW_UNDER_CURSOR: "capture_window_under_cursor",
+            HotkeyAction.REPEAT: "capture_repeat",
         }
-        for row, mode in enumerate(CAPTURE_MODES, start=1):
+        for row, mode in enumerate(HOTKEY_ACTIONS, start=1):
             combination = self.hotkey_bindings[mode]
             ctrl = QCheckBox()
             shift = QCheckBox()
@@ -680,7 +681,7 @@ class EditorWindow(QMainWindow):
         warning.setObjectName("hotkeyWarning")
         warning.setWordWrap(True)
         warning.setStyleSheet("color: #e03131;")
-        layout.addWidget(warning, len(CAPTURE_MODES) + 1, 0, 1, 5)
+        layout.addWidget(warning, len(HOTKEY_ACTIONS) + 1, 0, 1, 5)
         buttons = QHBoxLayout()
         default_button = QPushButton(self._tr("use_defaults"))
         default_button.setObjectName("hotkeyDefaultButton")
@@ -692,7 +693,7 @@ class EditorWindow(QMainWindow):
         cancel_button.setObjectName("hotkeyCancelButton")
         buttons.addWidget(ok_button)
         buttons.addWidget(cancel_button)
-        layout.addLayout(buttons, len(CAPTURE_MODES) + 2, 0, 1, 5)
+        layout.addLayout(buttons, len(HOTKEY_ACTIONS) + 2, 0, 1, 5)
 
         def selected_bindings():
             return {

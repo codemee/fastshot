@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import time
 import math
+from collections.abc import Callable
 from ctypes import POINTER, Structure, byref, c_int, c_uint, c_void_p, memset, sizeof, string_at
 from ctypes.wintypes import BOOL, BYTE, DWORD, HBITMAP, HDC, HGDIOBJ, HICON, HWND, LONG, RECT, WORD
 from dataclasses import dataclass
@@ -21,6 +22,7 @@ if sys.platform == "win32":
     import win32api
     import win32con
     import win32gui
+    import win32process
     DWMWA_EXTENDED_FRAME_BOUNDS = 9
     CURSOR_SHOWING = 1
     DI_NORMAL = 3
@@ -31,6 +33,7 @@ else:  # pragma: no cover - platform branch
     win32api = None
     win32con = None
     win32gui = None
+    win32process = None
     DWMWA_EXTENDED_FRAME_BOUNDS = None
     CURSOR_SHOWING = None
     DI_NORMAL = None
@@ -110,6 +113,26 @@ class CaptureRect:
         return CaptureRect(left, top, right - left, bottom - top)
 
 
+@dataclass
+class WindowCaptureTarget:
+    rect: CaptureRect
+    resolver: Callable[[], CaptureRect | None]
+
+    def resolve(self) -> CaptureRect | None:
+        try:
+            rect = self.resolver()
+        except Exception:
+            return None
+        return rect if rect is not None and not rect.is_empty else None
+
+
+@dataclass(frozen=True)
+class _LastCapture:
+    mode: CaptureMode
+    rect: CaptureRect | None = None
+    window_target: WindowCaptureTarget | None = None
+
+
 class RegionSelector(QWidget):
     def __init__(self) -> None:
         super().__init__(None)
@@ -165,6 +188,7 @@ class WindowSelector(QWidget):
     def __init__(self) -> None:
         super().__init__(None)
         self.target_rect: CaptureRect | None = None
+        self.target: WindowCaptureTarget | None = None
         self._last_query_at = 0.0
         self._left_was_down = False
         self.cancelled = False
@@ -217,14 +241,17 @@ class WindowSelector(QWidget):
         now = time.monotonic()
         if now - self._last_query_at >= 0.04:
             self._last_query_at = now
-            rect = self._target_at_point(point, use_uia=True)
+            target = self._target_at_point(point, use_uia=True)
+            rect = target.rect if target is not None else None
+            self.target = target
             if rect != self.target_rect:
                 self.target_rect = rect
                 self.update()
         left_is_down = bool(win32api.GetAsyncKeyState(0x01) & 0x8000)
         if self._left_was_down and not left_is_down:
             if self.target_rect is None:
-                self.target_rect = self._target_at_point(point, use_uia=True)
+                self.target = self._target_at_point(point, use_uia=True)
+                self.target_rect = self.target.rect if self.target is not None else None
             self.close()
         self._left_was_down = left_is_down
 
@@ -241,7 +268,9 @@ class WindowSelector(QWidget):
         now = time.monotonic()
         if now - self._last_query_at >= 0.04:
             self._last_query_at = now
-            rect = self._target_at_point(point, use_uia=True)
+            target = self._target_at_point(point, use_uia=True)
+            rect = target.rect if target is not None else None
+            self.target = target
             if rect != self.target_rect:
                 self.target_rect = rect
                 self.update()
@@ -255,16 +284,25 @@ class WindowSelector(QWidget):
             self.cancelled = True
             self.close()
 
-    def _target_at_point(self, point: QPoint, use_uia: bool, temporary: bool = False) -> CaptureRect | None:
+    def _target_at_point(
+        self, point: QPoint, use_uia: bool, temporary: bool = False
+    ) -> WindowCaptureTarget | None:
         if sys.platform == "darwin":
-            from fastshot.platforms.macos import rect_at_point
+            from fastshot.platforms.macos import capture_target_at_point, capture_target_bounds
 
-            bounds = rect_at_point(point.x(), point.y())
-            return CaptureRect(*bounds) if bounds else None
-        if use_uia:
-            rect = _window_rect_at_point(point, use_uia=True)
-            return rect
-        return _window_rect_at_point(point, exclude_hwnd=int(self.winId()), use_uia=False)
+            selected = capture_target_at_point(point.x(), point.y())
+            if selected is None:
+                return None
+            bounds, native_target = selected
+            return WindowCaptureTarget(
+                CaptureRect(*bounds),
+                lambda: _capture_rect_from_bounds(capture_target_bounds(native_target)),
+            )
+        return _window_target_at_point(
+            point,
+            exclude_hwnd=None if use_uia else int(self.winId()),
+            use_uia=use_uia,
+        )
 
 
 class CountdownOverlay(QWidget):
@@ -309,6 +347,9 @@ class CountdownOverlay(QWidget):
 
 
 class CaptureService:
+    def __init__(self) -> None:
+        self._last_capture: _LastCapture | None = None
+
     def capture(self, mode: CaptureMode, settings: CaptureSettings) -> Image.Image | None:
         if sys.platform == "darwin":
             from fastshot.platforms.macos import screen_recording_allowed
@@ -318,9 +359,53 @@ class CaptureService:
                     "Screen Recording permission is required. Enable FastShot (or its terminal) "
                     "in System Settings > Privacy & Security > Screen Recording."
                 )
-        rect = self._rect_for_mode(mode)
+        window_target = None
+        if mode == CaptureMode.WINDOW_UNDER_CURSOR:
+            window_target = self._select_window_target()
+            rect = window_target.rect if window_target is not None else None
+        else:
+            rect = self._rect_for_mode(mode)
         if rect is None or rect.is_empty:
             return None
+
+        image = self._capture_rect_for_mode(mode, rect, settings)
+        self._last_capture = _LastCapture(
+            mode,
+            rect=rect if mode == CaptureMode.REGION else None,
+            window_target=window_target,
+        )
+        return image
+
+    def repeat(self, settings: CaptureSettings) -> Image.Image | None:
+        previous = self._last_capture
+        if previous is None:
+            return None
+        if previous.mode == CaptureMode.REGION:
+            rect = previous.rect
+        elif previous.mode == CaptureMode.WINDOW_UNDER_CURSOR:
+            rect = previous.window_target.resolve() if previous.window_target is not None else None
+        else:
+            rect = self._rect_for_mode(previous.mode)
+        if rect is None or rect.is_empty:
+            return None
+        if (
+            previous.mode == CaptureMode.WINDOW_UNDER_CURSOR
+            and previous.window_target is not None
+            and settings.delay_seconds > 0
+        ):
+            self._countdown(settings.delay_seconds)
+            rect = previous.window_target.resolve()
+            if rect is None:
+                return None
+            settings = CaptureSettings(
+                include_cursor=settings.include_cursor,
+                delay_seconds=0,
+            )
+        return self._capture_rect_for_mode(previous.mode, rect, settings)
+
+    def _capture_rect_for_mode(
+        self, mode: CaptureMode, rect: CaptureRect, settings: CaptureSettings
+    ) -> Image.Image:
 
         if settings.delay_seconds > 0:
             self._countdown(settings.delay_seconds)
@@ -356,8 +441,6 @@ class CaptureService:
             return self._select_region()
         if mode == CaptureMode.ACTIVE_WINDOW:
             return self._active_window_rect() or self._fullscreen_rect()
-        if mode == CaptureMode.WINDOW_UNDER_CURSOR:
-            return self._window_under_cursor_rect() or self._fullscreen_rect()
         return None
 
     def _fullscreen_rect(self) -> CaptureRect:
@@ -391,13 +474,6 @@ class CaptureService:
             return None
         hwnd = win32gui.GetForegroundWindow()
         return _window_rect(hwnd)
-
-    def _window_under_cursor_rect(self) -> CaptureRect | None:
-        if sys.platform == "darwin":
-            return self._select_window_rect()
-        if win32gui is None or win32api is None:
-            return None
-        return self._select_window_rect()
 
     def _grab_rect(self, rect: CaptureRect) -> Image.Image:
         clipped = rect.intersect(self._fullscreen_rect())
@@ -445,7 +521,7 @@ class CaptureService:
         paste_y = screen_y - rect.top - hotspot_y
         image.paste(cursor_image, (paste_x, paste_y), cursor_image)
 
-    def _select_window_rect(self) -> CaptureRect | None:
+    def _select_window_target(self) -> WindowCaptureTarget | None:
         selector = WindowSelector()
         selector.show()
         selector.raise_()
@@ -458,7 +534,7 @@ class CaptureService:
             time.sleep(0.01)
         if selector.cancelled:
             return None
-        return selector.target_rect
+        return selector.target
 
     def _countdown(self, seconds: float) -> None:
         overlay = CountdownOverlay(seconds)
@@ -495,13 +571,44 @@ def _window_rect_at_point(
     exclude_hwnd: int | None = None,
     use_uia: bool = True,
 ) -> CaptureRect | None:
+    target = _window_target_at_point(point, exclude_hwnd=exclude_hwnd, use_uia=use_uia)
+    return target.rect if target is not None else None
+
+
+def _window_target_at_point(
+    point: QPoint,
+    exclude_hwnd: int | None = None,
+    use_uia: bool = True,
+) -> WindowCaptureTarget | None:
     if win32gui is None:
         return None
-    uia_rect = _uia_rect_at_point(point) if use_uia else None
-    if uia_rect is not None and not _looks_like_desktop_rect(uia_rect):
-        return uia_rect
+    uia_target = _uia_target_at_point(point) if use_uia else None
+    if uia_target is not None and not _looks_like_desktop_rect(uia_target.rect):
+        return uia_target
     hwnd = _window_from_point(point, exclude_hwnd)
-    return _window_rect(hwnd)
+    if not hwnd:
+        return None
+    rect = _window_rect(hwnd)
+    if rect is None:
+        return None
+    try:
+        _thread_id, process_id = win32process.GetWindowThreadProcessId(hwnd)
+        class_name = win32gui.GetClassName(hwnd)
+    except Exception:
+        return None
+
+    def resolve() -> CaptureRect | None:
+        if win32gui is None or not win32gui.IsWindow(hwnd):
+            return None
+        try:
+            _current_thread, current_process = win32process.GetWindowThreadProcessId(hwnd)
+            if current_process != process_id or win32gui.GetClassName(hwnd) != class_name:
+                return None
+        except Exception:
+            return None
+        return _window_rect(hwnd)
+
+    return WindowCaptureTarget(rect, resolve)
 
 
 def _window_from_point(point: QPoint, exclude_hwnd: int | None = None) -> int | None:
@@ -564,6 +671,11 @@ def _same_hwnd(left: object, right: object) -> bool:
 
 
 def _uia_rect_at_point(point: QPoint) -> CaptureRect | None:
+    target = _uia_target_at_point(point)
+    return target.rect if target is not None else None
+
+
+def _uia_target_at_point(point: QPoint) -> WindowCaptureTarget | None:
     if sys.platform != "win32":
         return None
     global _UIA_AUTOMATION, _UIA_POINT
@@ -579,6 +691,18 @@ def _uia_rect_at_point(point: QPoint) -> CaptureRect | None:
         element = _UIA_AUTOMATION.ElementFromPoint(_UIA_POINT(point.x(), point.y()))
         if not element:
             return None
+        initial = _uia_element_rect(element)
+        if initial is None:
+            return None
+        return WindowCaptureTarget(initial, lambda: _uia_element_rect(element))
+    except Exception:
+        return None
+
+
+def _uia_element_rect(element) -> CaptureRect | None:
+    try:
+        if bool(element.CurrentIsOffscreen):
+            return None
         rect = element.CurrentBoundingRectangle
         width = int(rect.right - rect.left)
         height = int(rect.bottom - rect.top)
@@ -587,6 +711,10 @@ def _uia_rect_at_point(point: QPoint) -> CaptureRect | None:
         return CaptureRect(int(rect.left), int(rect.top), width, height)
     except Exception:
         return None
+
+
+def _capture_rect_from_bounds(bounds: tuple[int, int, int, int] | None) -> CaptureRect | None:
+    return CaptureRect(*bounds) if bounds is not None else None
 
 
 def _looks_like_desktop_rect(rect: CaptureRect) -> bool:

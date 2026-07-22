@@ -52,7 +52,7 @@
   - `CaptureMode`、`Tool`、`CaptureSettings`、`DrawingSettings`。
 
 - `hotkeys.py`
-  - 定義四種截圖方式的可設定組合鍵、格式驗證與 `QSettings` 持久化。
+  - 定義四種截圖方式及重複擷取動作的可設定組合鍵、格式驗證與 `QSettings` 持久化。
   - UI 只編輯暫存副本；Windows 透過 `RegisterHotKey` 探測衝突，確認成功後才替換目前註冊。
 
 - `theme.py`
@@ -78,6 +78,8 @@
 6. 若啟用包含游標，best-effort 貼上當下真實游標。
 7. `EditorWindow.add_shot()` 建立新頁籤並顯示於左上角。
 8. `EditorWindow.copy_current()` 複製目前影像到剪貼簿。
+
+`Alt+Shift+Q` 預設會重複前一次成功的擷取，並可在快捷鍵設定面板自訂。矩形模式保存固定座標；視窗／控制項模式保存原生目標身分並在重複時重新取得目前邊界，目標已消失時不顯示錯誤也不建立頁籤。
 
 ## Editing Model
 

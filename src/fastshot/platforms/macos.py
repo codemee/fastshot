@@ -76,12 +76,30 @@ def active_window_bounds() -> tuple[int, int, int, int] | None:
     return max(candidates, key=lambda rect: rect[2] * rect[3], default=None)
 
 
+@dataclass(frozen=True)
+class MacCaptureTarget:
+    element: object | None
+    window_id: int
+    owner_pid: int
+
+
 def rect_at_point(x: int, y: int) -> tuple[int, int, int, int] | None:
     """Return the smallest accessible element at a global Quartz point."""
+    selected = capture_target_at_point(x, y)
+    return selected[0] if selected is not None else None
+
+
+def capture_target_at_point(
+    x: int, y: int
+) -> tuple[tuple[int, int, int, int], MacCaptureTarget] | None:
+    """Return bounds and a stable native identity for the selected target."""
     _frameworks()
     import ApplicationServices as accessibility
 
-    containing_window = window_at_point(x, y)
+    window = _window_target_at_point(x, y)
+    if window is None:
+        return None
+    containing_window, window_id, owner_pid = window
     system = accessibility.AXUIElementCreateSystemWide()
     result, element = accessibility.AXUIElementCopyElementAtPosition(system, float(x), float(y), None)
     if result == accessibility.kAXErrorSuccess and element is not None:
@@ -94,13 +112,39 @@ def rect_at_point(x: int, y: int) -> tuple[int, int, int, int] | None:
             # hit-test performed over the link. A valid hit-test target must
             # geometrically contain the queried cursor point.
             if rect is not None and not _tuple_rect_contains(rect, x, y):
-                return containing_window
+                return containing_window, MacCaptureTarget(None, window_id, owner_pid)
             if rect is not None and rect[2] >= 3 and rect[3] >= 3:
-                return rect
-    return containing_window
+                return rect, MacCaptureTarget(element, window_id, owner_pid)
+    return containing_window, MacCaptureTarget(None, window_id, owner_pid)
+
+
+def capture_target_bounds(target: MacCaptureTarget) -> tuple[int, int, int, int] | None:
+    """Resolve a previously selected target, returning None after it disappears."""
+    _frameworks()
+    import ApplicationServices as accessibility
+
+    window = _window_for_id(target.window_id, target.owner_pid)
+    if window is None:
+        return None
+    if target.element is None:
+        return window
+    pid_result, pid = accessibility.AXUIElementGetPid(target.element, None)
+    if pid_result != accessibility.kAXErrorSuccess or pid != target.owner_pid:
+        return None
+    rect = _ax_element_bounds(target.element, accessibility)
+    if rect is None:
+        return None
+    return _intersect_rects(rect, window)
 
 
 def window_at_point(x: int, y: int) -> tuple[int, int, int, int] | None:
+    target = _window_target_at_point(x, y)
+    return target[0] if target is not None else None
+
+
+def _window_target_at_point(
+    x: int, y: int
+) -> tuple[tuple[int, int, int, int], int, int] | None:
     _appkit, quartz = _frameworks()
     windows = quartz.CGWindowListCopyWindowInfo(
         quartz.kCGWindowListOptionOnScreenOnly | quartz.kCGWindowListExcludeDesktopElements,
@@ -116,7 +160,29 @@ def window_at_point(x: int, y: int) -> tuple[int, int, int, int] | None:
             continue
         left, top, width, height = _bounds_tuple(bounds)
         if left <= x < left + width and top <= y < top + height:
-            return left, top, width, height
+            return (
+                (left, top, width, height),
+                int(window.get(quartz.kCGWindowNumber, 0)),
+                int(window.get(quartz.kCGWindowOwnerPID, 0)),
+            )
+    return None
+
+
+def _window_for_id(window_id: int, owner_pid: int) -> tuple[int, int, int, int] | None:
+    _appkit, quartz = _frameworks()
+    windows = quartz.CGWindowListCopyWindowInfo(
+        quartz.kCGWindowListOptionOnScreenOnly | quartz.kCGWindowListExcludeDesktopElements,
+        quartz.kCGNullWindowID,
+    )
+    for window in windows or ():
+        if (
+            int(window.get(quartz.kCGWindowNumber, 0)) != window_id
+            or int(window.get(quartz.kCGWindowOwnerPID, 0)) != owner_pid
+            or window.get(quartz.kCGWindowLayer, 0) != 0
+        ):
+            continue
+        bounds = window.get(quartz.kCGWindowBounds)
+        return _bounds_tuple(bounds) if bounds else None
     return None
 
 

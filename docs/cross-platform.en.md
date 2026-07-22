@@ -13,7 +13,8 @@ Image drag/drop and paste use Qt `QMimeData`, `QUrl`, and clipboard APIs. On mac
 ### Windows
 
 - Global shortcuts use `RegisterHotKey` and consume `WM_HOTKEY`.
-- The toolbar keyboard icon configures all four capture shortcuts; Windows probes `RegisterHotKey` conflicts before applying them.
+- The toolbar keyboard icon configures the four capture shortcuts and the repeat action; Windows probes `RegisterHotKey` conflicts before applying them.
+- Repeat Previous Capture defaults to `Alt+Shift+Q`, is configurable, and preserves the previous region or selected window/control target.
 - Full-screen/region capture uses `mss` with Pillow `ImageGrab` fallback.
 - Focused-window bounds use DWM extended frame bounds.
 - Window/control selection prefers UI Automation with HWND fallback.

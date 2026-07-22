@@ -18,7 +18,8 @@ Windows 是目前主要實作平台。
 已實作：
 
 - 全域快捷鍵：`RegisterHotKey` 接收 `WM_HOTKEY`，避免快捷鍵送到焦點視窗。
-- 可由工具列鍵盤圖示設定四種截圖快捷鍵；Windows 在套用前以 `RegisterHotKey` 探測是否被其他程式占用。
+- 預設使用 `Alt+Shift+Q` 重複前一次成功擷取（可自訂），並保留前次矩形或選取的視窗／控制項目標。
+- 可由工具列鍵盤圖示設定四種截圖方式與重複擷取動作的快捷鍵；Windows 在套用前以 `RegisterHotKey` 探測是否被其他程式占用。
 - 全螢幕/矩形擷取：`mss`，失敗時 fallback 到 Pillow `ImageGrab`。
 - 焦點視窗擷取：DWM `DWMWA_EXTENDED_FRAME_BOUNDS`，避免截到不可見 resize frame。
 - 選取視窗/控制項：UI Automation 優先，傳統 HWND hit-test fallback。
