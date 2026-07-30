@@ -75,6 +75,9 @@ Editor shortcuts:
 - `Ctrl++` / `Ctrl+=`: Zoom in
 - `Ctrl+-`: Zoom out
 - `Ctrl+0`: Reset zoom
+- `F2`: Rename the current saved file directly in its tab (`Return` on macOS)
+
+You can also double-click the name of a saved tab to rename it. The original file extension is preserved.
 
 ## Project Docs
 

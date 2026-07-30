@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 
 from PIL import Image
 from PySide6.QtCore import QMimeData, QSettings, QUrl
@@ -25,6 +26,16 @@ def test_dirty_state_transitions():
 
     doc.mark_dirty()
     assert doc.can_save
+
+
+def test_rename_updates_path_and_title_without_clearing_dirty_state():
+    doc = ShotDocument("old", None, path=Path("C:/tmp/old.png"), dirty=True)
+
+    doc.mark_renamed("C:/tmp/new.png")
+
+    assert doc.path == Path("C:/tmp/new.png")
+    assert doc.title == "new"
+    assert doc.is_dirty
 
 
 def test_reindex_after_middle_tab_close(qt_app):

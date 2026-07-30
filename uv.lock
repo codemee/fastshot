@@ -22,7 +22,7 @@ wheels = [
 
 [[package]]
 name = "fastshot"
-version = "0.0.4"
+version = "0.0.5"
 source = { editable = "." }
 dependencies = [
     { name = "comtypes", marker = "sys_platform == 'win32'" },

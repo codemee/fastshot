@@ -31,6 +31,7 @@
 - `main_window.py`
   - 編輯主視窗、toolbar、多頁籤、存檔/另存、縮放、設定面板。
   - 每個截圖頁籤持有一個 `ImageCanvas`。
+  - 已存檔頁籤可用 Windows/Linux `F2` 或 macOS `Return`，以及雙擊標籤名稱，直接在頁籤內重新命名原始檔案；重新命名保留影像副檔名。
   - 截圖、拖放檔案與剪貼簿影像共用頁籤建立流程；拖放保留來源 `Path` 並以 clean document 開啟，剪貼簿則建立新的 unsaved document。
   - Windows 將 dirty 狀態方塊放在頁籤標題左側、關閉按鈕放在右側；其他平台依 Qt 原生關閉按鈕位置安排。
 
