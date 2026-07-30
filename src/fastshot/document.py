@@ -42,3 +42,7 @@ class ShotDocument:
         self.path = Path(path)
         self.title = self.path.stem
         self.dirty = False
+
+    def mark_renamed(self, path: str | Path) -> None:
+        self.path = Path(path)
+        self.title = self.path.stem

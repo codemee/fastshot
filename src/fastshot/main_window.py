@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QMainWindow,
     QMenu,
     QMessageBox,
@@ -137,6 +138,26 @@ class TabCloseWidget(QWidget):
         layout.addWidget(close_button, 0, Qt.AlignmentFlag.AlignVCenter)
 
 
+class TabNameEditor(QLineEdit):
+    accepted = Signal()
+    cancelled = Signal()
+
+    def keyPressEvent(self, event) -> None:
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            self.accepted.emit()
+            event.accept()
+            return
+        if event.key() == Qt.Key.Key_Escape:
+            self.cancelled.emit()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+    def focusOutEvent(self, event) -> None:
+        super().focusOutEvent(event)
+        self.accepted.emit()
+
+
 class EditorWindow(QMainWindow):
     hiddenByMinimize = Signal()
 
@@ -166,8 +187,16 @@ class EditorWindow(QMainWindow):
         self.tabs.tabBar().setExpanding(False)
         self.tabs.currentChanged.connect(self._current_changed)
         self.tabs.tabCloseRequested.connect(self._close_tab)
+        self.tabs.tabBarDoubleClicked.connect(self._start_tab_rename)
         self.setCentralWidget(self.tabs)
         self.documents: dict[int, ShotDocument] = {}
+        self._rename_tab_index: int | None = None
+        self._rename_commit_active = False
+        self._tab_name_editor = TabNameEditor(self.tabs.tabBar())
+        self._tab_name_editor.setObjectName("tabNameEditor")
+        self._tab_name_editor.hide()
+        self._tab_name_editor.accepted.connect(self._commit_tab_rename)
+        self._tab_name_editor.cancelled.connect(self._cancel_tab_rename)
         self.tab_menu_button = QToolButton()
         self.tab_menu_button.setArrowType(Qt.ArrowType.DownArrow)
         self.tab_menu_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
@@ -429,6 +458,11 @@ class EditorWindow(QMainWindow):
         self.save_as_action.setShortcut(QKeySequence.StandardKey.SaveAs)
         self.save_as_action.triggered.connect(self.save_current_as)
         toolbar.addAction(self.save_as_action)
+
+        self.rename_action = QAction("Rename", self)
+        self.rename_action.setShortcut(QKeySequence("Return" if sys.platform == "darwin" else "F2"))
+        self.rename_action.triggered.connect(self.rename_current)
+        self.addAction(self.rename_action)
         toolbar.addSeparator()
 
         self.zoom_in_action = QAction(tool_icon("zoom_in"), "Zoom in", self)
@@ -789,6 +823,94 @@ class EditorWindow(QMainWindow):
             self._tr("include_cursor_on") if checked else self._tr("include_cursor_off")
         )
 
+    def rename_current(self) -> None:
+        self._start_tab_rename(self.tabs.currentIndex())
+
+    def _start_tab_rename(self, index: int) -> None:
+        doc = self.documents.get(index)
+        if doc is None or doc.path is None:
+            return
+        self._rename_tab_index = index
+        self.tabs.setCurrentIndex(index)
+        self._position_tab_name_editor()
+        self._tab_name_editor.setText(doc.path.stem)
+        self._tab_name_editor.show()
+        self._tab_name_editor.raise_()
+        self._tab_name_editor.setFocus(Qt.FocusReason.ShortcutFocusReason)
+        self._tab_name_editor.selectAll()
+        self.rename_action.setEnabled(False)
+
+    def _position_tab_name_editor(self) -> None:
+        index = self._rename_tab_index
+        if index is None:
+            return
+        tab_bar = self.tabs.tabBar()
+        rect = tab_bar.tabRect(index)
+        left = tab_bar.tabButton(index, QTabBar.ButtonPosition.LeftSide)
+        right = tab_bar.tabButton(index, QTabBar.ButtonPosition.RightSide)
+        left_width = left.width() if left is not None and left.isVisible() else 0
+        right_width = right.width() if right is not None and right.isVisible() else 0
+        rect.adjust(left_width + 4, 2, -(right_width + 4), -2)
+        self._tab_name_editor.setGeometry(rect)
+
+    def _commit_tab_rename(self) -> None:
+        if self._rename_commit_active:
+            return
+        self._rename_commit_active = True
+        try:
+            self._try_commit_tab_rename()
+        finally:
+            self._rename_commit_active = False
+
+    def _try_commit_tab_rename(self) -> None:
+        index = self._rename_tab_index
+        if index is None:
+            return
+        doc = self.documents.get(index)
+        name = self._tab_name_editor.text().strip()
+        if doc is None or doc.path is None:
+            self._finish_tab_rename()
+            return
+        if not name or name in {".", ".."} or "/" in name or "\\" in name:
+            QMessageBox.warning(self, "FastShot", self._tr("rename_invalid"))
+            self._tab_name_editor.setFocus(Qt.FocusReason.OtherFocusReason)
+            self._tab_name_editor.selectAll()
+            return
+
+        source = doc.path
+        target = source.with_name(f"{name}{source.suffix}")
+        if target.name == source.name:
+            self._finish_tab_rename()
+            return
+        try:
+            target_is_other_file = target.exists() and not target.samefile(source)
+        except OSError:
+            target_is_other_file = target.exists()
+        if target_is_other_file:
+            QMessageBox.warning(self, "FastShot", self._tr("rename_exists", name=target.name))
+            self._tab_name_editor.setFocus(Qt.FocusReason.OtherFocusReason)
+            self._tab_name_editor.selectAll()
+            return
+        try:
+            source.rename(target)
+        except OSError:
+            QMessageBox.warning(self, "FastShot", self._tr("rename_failed", path=source))
+            self._tab_name_editor.setFocus(Qt.FocusReason.OtherFocusReason)
+            self._tab_name_editor.selectAll()
+            return
+        doc.mark_renamed(target)
+        self._finish_tab_rename()
+        self._refresh_tabs()
+
+    def _cancel_tab_rename(self) -> None:
+        if self._rename_tab_index is not None:
+            self._finish_tab_rename()
+
+    def _finish_tab_rename(self) -> None:
+        self._rename_tab_index = None
+        self._tab_name_editor.hide()
+        self._update_actions()
+
     def _save_to_path(self, doc: ShotDocument, path: Path) -> None:
         canvas = self._current_canvas()
         if canvas is None:
@@ -833,10 +955,14 @@ class EditorWindow(QMainWindow):
         self._refresh_tabs()
 
     def _current_changed(self, _index: int) -> None:
+        if self._rename_tab_index is not None and self._rename_tab_index != _index:
+            self._cancel_tab_rename()
         self._update_title()
         self._update_actions()
 
     def _close_tab(self, index: int) -> None:
+        if self._rename_tab_index is not None:
+            self._cancel_tab_rename()
         doc = self.documents.get(index)
         if doc and doc.is_dirty:
             reply = QMessageBox.question(
@@ -996,6 +1122,7 @@ class EditorWindow(QMainWindow):
         self.copy_action.setEnabled(has_doc)
         self.save_action.setEnabled(bool(doc and doc.can_save))
         self.save_as_action.setEnabled(has_doc)
+        self.rename_action.setEnabled(bool(doc and doc.path) and self._rename_tab_index is None)
         self.undo_action.setEnabled(bool(canvas and canvas.can_undo))
         self.zoom_in_action.setEnabled(has_doc)
         self.zoom_out_action.setEnabled(has_doc)
@@ -1056,6 +1183,7 @@ class EditorWindow(QMainWindow):
             (self.paste_action, "paste"),
             (self.save_action, "save"),
             (self.save_as_action, "save_as"),
+            (self.rename_action, "rename"),
             (self.zoom_in_action, "zoom_in"),
             (self.zoom_out_action, "zoom_out"),
             (self.zoom_reset_action, "reset_zoom"),
@@ -1133,3 +1261,4 @@ class EditorWindow(QMainWindow):
         total_width = sum(tab_bar.tabRect(i).width() for i in range(tab_bar.count()))
         available = max(0, self.tabs.width() - 8)
         self.tab_menu_button.setVisible(total_width > available and self.tabs.count() > 0)
+        self._position_tab_name_editor()

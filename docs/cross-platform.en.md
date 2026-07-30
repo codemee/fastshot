@@ -65,5 +65,6 @@ Linux is not currently a primary target. X11 and Wayland differ substantially in
 - Clipboard content pastes into common applications.
 - PNG/JPG save works.
 - Dropped images open under their original name, start clean, and save edits back to the source.
+- Saved tabs rename their source file inline with Windows/Linux `F2`, macOS `Return`, or a double-click; existing files are not overwritten and the extension is preserved.
 - Pasted images and pasted file-manager images create new timestamp-named tabs.
 - Minimize/hide, tray double-click, and tray Exit work.
