@@ -29,14 +29,15 @@ This document introduces the FastShot codebase. Read [cross-platform.en.md](cros
 
 1. `app.py` receives a global shortcut.
 2. The editor hides so it is not captured.
-3. `CaptureService._rect_for_mode()` resolves the target rectangle.
-4. A delayed capture displays a bottom-right countdown while the user continues working.
-5. The overlay hides and `_grab_rect()` captures the live screen.
-6. If enabled, the current real pointer is composited best-effort.
-7. `EditorWindow.add_shot()` creates a tab aligned to the editor's top-left.
-8. `EditorWindow.copy_current()` copies the image to the clipboard.
+3. On Windows, zero-delay region capture saves the virtual desktop before `WM_HOTKEY` returns, then uses that frozen image behind the selection overlay. The final crop therefore retains transient menus even after the target application closes them.
+4. Other modes use `CaptureService._rect_for_mode()` to resolve the target rectangle.
+5. A delayed capture displays a bottom-right countdown that can be cancelled with `Esc`; region capture freezes the desktop after the countdown, while other modes count down after resolving the rectangle.
+6. Frozen regions are cropped from the saved desktop image; other modes hide the overlay and capture through `_grab_rect()`.
+7. If enabled, the native pointer at freeze or capture time is composited best-effort.
+8. `EditorWindow.add_shot()` creates a tab aligned to the editor's top-left.
+9. `EditorWindow.copy_current()` copies the image to the clipboard.
 
-`Alt+Shift+Q` repeats the previous successful capture by default and can be customized in the shortcut panel. Region capture preserves fixed coordinates; window/control capture preserves the native target identity and resolves its current bounds when repeated. If that target no longer exists, no error or new tab is shown.
+`Ctrl+Shift+Q` repeats the previous successful capture by default and can be customized in the shortcut panel. Region capture preserves fixed coordinates; window/control capture preserves the native target identity and resolves its current bounds when repeated. If that target no longer exists, no error or new tab is shown.
 
 ## Editing Model
 

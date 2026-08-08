@@ -55,13 +55,13 @@ Images can also be added by drag-and-drop or clipboard paste. A dropped image op
 
 ## Capture Shortcuts
 
-- `Alt+Shift+Q`: Repeat the previous capture (reuses the previous region or selected window/control target; configurable in the shortcut panel)
-- `Alt+Shift+A`: Capture the focused window
-- `Alt+Shift+R`: Capture a rectangular region
-- `Alt+Shift+F`: Capture the full screen
-- `Alt+Shift+W`: Select and capture a window or control
+- `Ctrl+Shift+Q`: Repeat the previous capture (reuses the previous region or selected window/control target; configurable in the shortcut panel)
+- `Ctrl+Shift+A`: Capture the focused window
+- `Ctrl+Shift+R`: Capture a rectangular region
+- `Ctrl+Shift+F`: Capture the full screen
+- `Ctrl+Shift+W`: Select and capture a window or control
 
-On macOS, replace `Alt` with `Option`. On first use, grant Screen Recording and Accessibility permissions when prompted. FastShot currently runs through `uv`/`uvx` rather than as a packaged macOS app, so the permission entry in System Settings usually belongs to the app that launched the command, such as Terminal, iTerm2, or an IDE. After granting access, fully quit and reopen that host app, then run FastShot again.
+macOS uses the same `Ctrl+Shift` letter combinations. On first use, grant Screen Recording and Accessibility permissions when prompted. FastShot currently runs through `uv`/`uvx` rather than as a packaged macOS app, so the permission entry in System Settings usually belongs to the app that launched the command, such as Terminal, iTerm2, or an IDE. After granting access, fully quit and reopen that host app, then run FastShot again.
 
 Editor shortcuts:
 

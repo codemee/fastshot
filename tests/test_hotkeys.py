@@ -26,9 +26,9 @@ def test_duplicate_hotkeys_are_rejected():
     assert validate_hotkeys(bindings) == "duplicate"
 
 
-def test_repeat_hotkey_defaults_to_alt_shift_q_and_can_be_customized():
+def test_repeat_hotkey_defaults_to_ctrl_shift_q_and_can_be_customized():
     bindings = default_hotkeys()
-    assert bindings[HotkeyAction.REPEAT].display() == "Shift+Alt+Q"
+    assert bindings[HotkeyAction.REPEAT].display() == "Ctrl+Shift+Q"
 
     bindings[HotkeyAction.REPEAT] = HotkeyCombination("Y", ctrl=True, shift=True)
     assert validate_hotkeys(bindings) is None
@@ -37,7 +37,7 @@ def test_repeat_hotkey_defaults_to_alt_shift_q_and_can_be_customized():
 def test_windows_filter_registers_configured_repeat_hotkey():
     native_filter = WindowsHotkeyFilter(None, HotkeyBridge(), default_hotkeys())
 
-    assert (HotkeyCombination("Q", shift=True, alt=True), HotkeyAction.REPEAT) in (
+    assert (HotkeyCombination("Q", ctrl=True, shift=True), HotkeyAction.REPEAT) in (
         native_filter.bindings.values()
     )
 
@@ -52,8 +52,9 @@ def test_hotkey_panel_includes_customizable_repeat_action(qt_app):
     menu = window._create_hotkey_menu()
 
     assert menu.findChild(QComboBox, "repeatLetter").currentText() == "Q"
+    assert menu.findChild(QCheckBox, "repeatCtrl").isChecked()
     assert menu.findChild(QCheckBox, "repeatShift").isChecked()
-    assert menu.findChild(QCheckBox, "repeatAlt").isChecked()
+    assert not menu.findChild(QCheckBox, "repeatAlt").isChecked()
 
 
 def test_hotkey_store_round_trip(tmp_path):
@@ -116,7 +117,8 @@ def test_use_defaults_only_resets_pending_panel_values(qt_app):
     menu.findChild(QPushButton, "hotkeyDefaultButton").click()
 
     assert menu.findChild(QComboBox, "active_windowLetter").currentText() == "A"
+    assert menu.findChild(QCheckBox, "active_windowCtrl").isChecked()
     assert menu.findChild(QCheckBox, "active_windowShift").isChecked()
-    assert menu.findChild(QCheckBox, "active_windowAlt").isChecked()
+    assert not menu.findChild(QCheckBox, "active_windowAlt").isChecked()
     assert applied == []
     assert window.hotkey_bindings == custom

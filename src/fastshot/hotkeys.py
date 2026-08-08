@@ -46,11 +46,11 @@ class HotkeyCombination:
 
 def default_hotkeys() -> dict[CaptureMode | HotkeyAction, HotkeyCombination]:
     return {
-        CaptureMode.ACTIVE_WINDOW: HotkeyCombination("A", shift=True, alt=True),
-        CaptureMode.REGION: HotkeyCombination("R", shift=True, alt=True),
-        CaptureMode.FULLSCREEN: HotkeyCombination("F", shift=True, alt=True),
-        CaptureMode.WINDOW_UNDER_CURSOR: HotkeyCombination("W", shift=True, alt=True),
-        HotkeyAction.REPEAT: HotkeyCombination("Q", shift=True, alt=True),
+        CaptureMode.ACTIVE_WINDOW: HotkeyCombination("A", ctrl=True, shift=True),
+        CaptureMode.REGION: HotkeyCombination("R", ctrl=True, shift=True),
+        CaptureMode.FULLSCREEN: HotkeyCombination("F", ctrl=True, shift=True),
+        CaptureMode.WINDOW_UNDER_CURSOR: HotkeyCombination("W", ctrl=True, shift=True),
+        HotkeyAction.REPEAT: HotkeyCombination("Q", ctrl=True, shift=True),
     }
 
 

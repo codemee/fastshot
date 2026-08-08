@@ -18,9 +18,10 @@ Windows 是目前主要實作平台。
 已實作：
 
 - 全域快捷鍵：`RegisterHotKey` 接收 `WM_HOTKEY`，避免快捷鍵送到焦點視窗。
-- 預設使用 `Alt+Shift+Q` 重複前一次成功擷取（可自訂），並保留前次矩形或選取的視窗／控制項目標。
+- 預設使用 `Ctrl+Shift+Q` 重複前一次成功擷取（可自訂），並保留前次矩形或選取的視窗／控制項目標。
 - 可由工具列鍵盤圖示設定四種截圖方式與重複擷取動作的快捷鍵；Windows 在套用前以 `RegisterHotKey` 探測是否被其他程式占用。
 - 全螢幕/矩形擷取：`mss`，失敗時 fallback 到 Pillow `ImageGrab`。
+- 矩形區域擷取會先凍結虛擬桌面，再從凍結畫面裁切，以保留功能表等失去焦點即消失的暫態內容。
 - 焦點視窗擷取：DWM `DWMWA_EXTENDED_FRAME_BOUNDS`，避免截到不可見 resize frame。
 - 選取視窗/控制項：UI Automation 優先，傳統 HWND hit-test fallback。
 - 真實游標貼圖：Win32 cursor handle best-effort 轉 RGBA bitmap，失敗不阻斷截圖。
@@ -30,7 +31,7 @@ Windows 是目前主要實作平台。
 
 已實作：
 
-- Quartz event tap 全域快捷鍵，攔截並 consume `Option+Shift+A/R/F/W`。
+- Quartz event tap 全域快捷鍵，攔截並 consume `Ctrl+Shift+A/R/F/W`。
 - 快捷鍵 listener 支援使用者設定的 Ctrl／Shift／Option 與 A–Z 字母組合，設定以 `QSettings` 保留。
 - 透過 Screen Recording API 檢查並要求螢幕錄製權限。
 - 優先使用 Accessibility `AXFocusedWindow` 擷取焦點視窗；失敗時才從前景程序的 Core Graphics 視窗選擇最大正常視窗，避免 Chrome 連結網址等 transient popup 被誤判為焦點視窗。
@@ -81,10 +82,10 @@ Linux 尚未作為主要目標。Wayland/X11 差異很大，尤其是全域快�
 - 快捷鍵可觸發，且不把按鍵送給焦點 app。
 - 快捷鍵設定面板會顯示目前值；「使用預設」只改變面板暫存值，OK 套用並保留，Cancel 不改變目前設定。
 - macOS 自訂 Ctrl／Shift／Option 與字母組合可觸發正確的截圖方式，重新啟動後設定仍保留。
-- 無延遲和有延遲流程都符合：先決定目標，倒數後截即時畫面。
+- 無延遲和有延遲流程都符合：Windows 矩形區域擷取於倒數後凍結桌面，其他模式則先決定目標再倒數擷取。
 - 全螢幕、矩形、焦點視窗、選取視窗/控制項都可用。
 - Chrome 等具有 transient popup 的應用程式，焦點視窗擷取不會誤截連結網址或 tooltip。
-- ESC 可取消矩形/視窗選取。
+- ESC 可取消延遲倒數及矩形／視窗選取。
 - 包含游標時顯示當下真實游標。
 - 截圖後影像出現在編輯區左上角。
 - 複製到剪貼簿可貼到常見 app。

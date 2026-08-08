@@ -14,6 +14,7 @@ from PySide6.QtCore import QPoint, QRect, QSize, Qt
 from PySide6.QtGui import QColor, QCursor, QFont, QGuiApplication, QMouseEvent, QPainter, QPen
 from PySide6.QtWidgets import QApplication, QWidget
 
+from fastshot.qt_image import pil_to_qimage
 from fastshot.settings import CaptureMode, CaptureSettings
 
 if sys.platform == "win32":
@@ -133,13 +134,28 @@ class _LastCapture:
     window_target: WindowCaptureTarget | None = None
 
 
+@dataclass(frozen=True)
+class _FrozenDesktop:
+    rect: CaptureRect
+    image: Image.Image
+
+    def crop(self, rect: CaptureRect) -> Image.Image | None:
+        clipped = rect.intersect(self.rect)
+        if clipped is None or clipped.is_empty:
+            return None
+        left = clipped.left - self.rect.left
+        top = clipped.top - self.rect.top
+        return self.image.crop((left, top, left + clipped.width, top + clipped.height))
+
+
 class RegionSelector(QWidget):
-    def __init__(self) -> None:
+    def __init__(self, frozen_desktop: Image.Image | None = None) -> None:
         super().__init__(None)
         self.start: QPoint | None = None
         self.end: QPoint | None = None
         self.selected_rect: QRect | None = None
         self.cancelled = False
+        self.frozen_desktop = pil_to_qimage(frozen_desktop) if frozen_desktop is not None else None
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
@@ -152,12 +168,20 @@ class RegionSelector(QWidget):
 
     def paintEvent(self, _event) -> None:
         painter = QPainter(self)
+        if self.frozen_desktop is not None:
+            painter.drawImage(self.rect(), self.frozen_desktop)
         painter.fillRect(self.rect(), QColor(0, 0, 0, 80))
         if self.start and self.end:
             rect = QRect(self.mapFromGlobal(self.start), self.mapFromGlobal(self.end)).normalized()
-            painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Clear)
-            painter.fillRect(rect, QColor(0, 0, 0, 0))
-            painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
+            if self.frozen_desktop is None:
+                painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Clear)
+                painter.fillRect(rect, QColor(0, 0, 0, 0))
+                painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
+            else:
+                painter.save()
+                painter.setClipRect(rect)
+                painter.drawImage(self.rect(), self.frozen_desktop)
+                painter.restore()
             painter.setPen(QPen(QColor("#ff922b"), 2))
             painter.drawRect(rect)
 
@@ -180,6 +204,11 @@ class RegionSelector(QWidget):
 
     def keyPressEvent(self, event) -> None:
         if event.key() == Qt.Key.Key_Escape:
+            self.cancelled = True
+            self.close()
+
+    def poll(self) -> None:
+        if _escape_pressed():
             self.cancelled = True
             self.close()
 
@@ -309,20 +338,30 @@ class CountdownOverlay(QWidget):
     def __init__(self, seconds: float) -> None:
         super().__init__(None)
         self.remaining = max(0, int(math.ceil(seconds)))
+        self.cancelled = False
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.Tool
             | Qt.WindowType.WindowTransparentForInput
+            | Qt.WindowType.WindowDoesNotAcceptFocus
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.resize(150, 72)
         self._move_to_bottom_right()
 
     def set_remaining(self, seconds: int) -> None:
         self.remaining = max(0, seconds)
         self.update()
+
+    def keyPressEvent(self, event) -> None:
+        if event.key() == Qt.Key.Key_Escape:
+            self.cancelled = True
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     def paintEvent(self, _event) -> None:
         painter = QPainter(self)
@@ -350,7 +389,23 @@ class CaptureService:
     def __init__(self) -> None:
         self._last_capture: _LastCapture | None = None
 
-    def capture(self, mode: CaptureMode, settings: CaptureSettings) -> Image.Image | None:
+    def prepare_frozen_selection(
+        self, mode: CaptureMode, settings: CaptureSettings
+    ) -> _FrozenDesktop | None:
+        if (
+            sys.platform == "win32"
+            and settings.delay_seconds <= 0
+            and mode == CaptureMode.REGION
+        ):
+            return self._freeze_desktop(settings)
+        return None
+
+    def capture(
+        self,
+        mode: CaptureMode,
+        settings: CaptureSettings,
+        frozen_selection: _FrozenDesktop | None = None,
+    ) -> Image.Image | None:
         if sys.platform == "darwin":
             from fastshot.platforms.macos import screen_recording_allowed
 
@@ -359,16 +414,31 @@ class CaptureService:
                     "Screen Recording permission is required. Enable FastShot (or its terminal) "
                     "in System Settings > Privacy & Security > Screen Recording."
                 )
+        frozen = frozen_selection if mode == CaptureMode.REGION else None
+        if frozen is None and sys.platform == "win32" and mode == CaptureMode.REGION:
+            frozen = self._freeze_desktop(settings)
+            if frozen is None:
+                return None
+
         window_target = None
         if mode == CaptureMode.WINDOW_UNDER_CURSOR:
             window_target = self._select_window_target()
             rect = window_target.rect if window_target is not None else None
+        elif mode == CaptureMode.REGION:
+            rect = self._select_region(frozen.image if frozen is not None else None)
         else:
             rect = self._rect_for_mode(mode)
         if rect is None or rect.is_empty:
             return None
 
-        image = self._capture_rect_for_mode(mode, rect, settings)
+        if frozen is not None:
+            image = frozen.crop(rect)
+            if image is None:
+                return None
+        else:
+            image = self._capture_rect_for_mode(mode, rect, settings)
+            if image is None:
+                return None
         self._last_capture = _LastCapture(
             mode,
             rect=rect if mode == CaptureMode.REGION else None,
@@ -393,7 +463,8 @@ class CaptureService:
             and previous.window_target is not None
             and settings.delay_seconds > 0
         ):
-            self._countdown(settings.delay_seconds)
+            if self._countdown(settings.delay_seconds):
+                return None
             rect = previous.window_target.resolve()
             if rect is None:
                 return None
@@ -405,10 +476,10 @@ class CaptureService:
 
     def _capture_rect_for_mode(
         self, mode: CaptureMode, rect: CaptureRect, settings: CaptureSettings
-    ) -> Image.Image:
+    ) -> Image.Image | None:
 
-        if settings.delay_seconds > 0:
-            self._countdown(settings.delay_seconds)
+        if settings.delay_seconds > 0 and self._countdown(settings.delay_seconds):
+            return None
 
         if sys.platform == "darwin" and mode == CaptureMode.WINDOW_UNDER_CURSOR:
             image = self._grab_macos_selection_without_hover(rect)
@@ -437,8 +508,6 @@ class CaptureService:
     def _rect_for_mode(self, mode: CaptureMode) -> CaptureRect | None:
         if mode == CaptureMode.FULLSCREEN:
             return self._fullscreen_rect()
-        if mode == CaptureMode.REGION:
-            return self._select_region()
         if mode == CaptureMode.ACTIVE_WINDOW:
             return self._active_window_rect() or self._fullscreen_rect()
         return None
@@ -448,8 +517,8 @@ class CaptureService:
             monitor = sct.monitors[0]
             return CaptureRect(monitor["left"], monitor["top"], monitor["width"], monitor["height"])
 
-    def _select_region(self) -> CaptureRect | None:
-        selector = RegionSelector()
+    def _select_region(self, frozen_desktop: Image.Image | None = None) -> CaptureRect | None:
+        selector = RegionSelector(frozen_desktop)
         selector.show()
         selector.raise_()
         selector.activateWindow()
@@ -457,6 +526,7 @@ class CaptureService:
         QApplication.setActiveWindow(selector)
         QApplication.processEvents()
         while selector.isVisible():
+            selector.poll()
             QApplication.processEvents()
             time.sleep(0.01)
         if selector.cancelled or selector.selected_rect is None:
@@ -536,22 +606,36 @@ class CaptureService:
             return None
         return selector.target
 
-    def _countdown(self, seconds: float) -> None:
+    def _freeze_desktop(self, settings: CaptureSettings) -> _FrozenDesktop | None:
+        if settings.delay_seconds > 0 and self._countdown(settings.delay_seconds):
+            return None
+        rect = self._fullscreen_rect()
+        image = self._grab_rect(rect)
+        if settings.include_cursor:
+            self._draw_cursor(image, rect)
+        return _FrozenDesktop(rect, image)
+
+    def _countdown(self, seconds: float) -> bool:
         overlay = CountdownOverlay(seconds)
         overlay.show()
         start = time.monotonic()
         total = max(0.0, seconds)
+        cancelled = False
         while True:
             elapsed = time.monotonic() - start
             remaining = max(0, math.ceil(total - elapsed))
             overlay.set_remaining(remaining)
             QApplication.processEvents()
+            if overlay.cancelled or _escape_pressed():
+                cancelled = True
+                break
             if elapsed >= total:
                 break
             time.sleep(0.05)
         overlay.hide()
         QApplication.processEvents()
         time.sleep(0.05)
+        return cancelled
 
 
 def _window_rect(hwnd: int | None) -> CaptureRect | None:
@@ -838,3 +922,21 @@ def _virtual_screen_rect() -> QRect:
     for screen in screens[1:]:
         rect = rect.united(screen.geometry())
     return rect
+
+
+def _escape_pressed() -> bool:
+    if sys.platform == "win32" and win32api is not None:
+        return bool(win32api.GetAsyncKeyState(0x1B) & 0x8000)
+    if sys.platform == "darwin":
+        try:
+            import Quartz
+
+            return bool(
+                Quartz.CGEventSourceKeyState(
+                    Quartz.kCGEventSourceStateCombinedSessionState,
+                    53,
+                )
+            )
+        except Exception:
+            return False
+    return False
