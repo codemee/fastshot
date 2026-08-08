@@ -207,6 +207,11 @@ class RegionSelector(QWidget):
             self.cancelled = True
             self.close()
 
+    def poll(self) -> None:
+        if _escape_pressed():
+            self.cancelled = True
+            self.close()
+
 
 class WindowSelector(QWidget):
     def __init__(self) -> None:
@@ -333,6 +338,7 @@ class CountdownOverlay(QWidget):
     def __init__(self, seconds: float) -> None:
         super().__init__(None)
         self.remaining = max(0, int(math.ceil(seconds)))
+        self.cancelled = False
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
@@ -349,6 +355,13 @@ class CountdownOverlay(QWidget):
     def set_remaining(self, seconds: int) -> None:
         self.remaining = max(0, seconds)
         self.update()
+
+    def keyPressEvent(self, event) -> None:
+        if event.key() == Qt.Key.Key_Escape:
+            self.cancelled = True
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     def paintEvent(self, _event) -> None:
         painter = QPainter(self)
@@ -404,6 +417,8 @@ class CaptureService:
         frozen = frozen_selection if mode == CaptureMode.REGION else None
         if frozen is None and sys.platform == "win32" and mode == CaptureMode.REGION:
             frozen = self._freeze_desktop(settings)
+            if frozen is None:
+                return None
 
         window_target = None
         if mode == CaptureMode.WINDOW_UNDER_CURSOR:
@@ -422,6 +437,8 @@ class CaptureService:
                 return None
         else:
             image = self._capture_rect_for_mode(mode, rect, settings)
+            if image is None:
+                return None
         self._last_capture = _LastCapture(
             mode,
             rect=rect if mode == CaptureMode.REGION else None,
@@ -446,7 +463,8 @@ class CaptureService:
             and previous.window_target is not None
             and settings.delay_seconds > 0
         ):
-            self._countdown(settings.delay_seconds)
+            if self._countdown(settings.delay_seconds):
+                return None
             rect = previous.window_target.resolve()
             if rect is None:
                 return None
@@ -458,10 +476,10 @@ class CaptureService:
 
     def _capture_rect_for_mode(
         self, mode: CaptureMode, rect: CaptureRect, settings: CaptureSettings
-    ) -> Image.Image:
+    ) -> Image.Image | None:
 
-        if settings.delay_seconds > 0:
-            self._countdown(settings.delay_seconds)
+        if settings.delay_seconds > 0 and self._countdown(settings.delay_seconds):
+            return None
 
         if sys.platform == "darwin" and mode == CaptureMode.WINDOW_UNDER_CURSOR:
             image = self._grab_macos_selection_without_hover(rect)
@@ -508,6 +526,7 @@ class CaptureService:
         QApplication.setActiveWindow(selector)
         QApplication.processEvents()
         while selector.isVisible():
+            selector.poll()
             QApplication.processEvents()
             time.sleep(0.01)
         if selector.cancelled or selector.selected_rect is None:
@@ -587,31 +606,36 @@ class CaptureService:
             return None
         return selector.target
 
-    def _freeze_desktop(self, settings: CaptureSettings) -> _FrozenDesktop:
-        if settings.delay_seconds > 0:
-            self._countdown(settings.delay_seconds)
+    def _freeze_desktop(self, settings: CaptureSettings) -> _FrozenDesktop | None:
+        if settings.delay_seconds > 0 and self._countdown(settings.delay_seconds):
+            return None
         rect = self._fullscreen_rect()
         image = self._grab_rect(rect)
         if settings.include_cursor:
             self._draw_cursor(image, rect)
         return _FrozenDesktop(rect, image)
 
-    def _countdown(self, seconds: float) -> None:
+    def _countdown(self, seconds: float) -> bool:
         overlay = CountdownOverlay(seconds)
         overlay.show()
         start = time.monotonic()
         total = max(0.0, seconds)
+        cancelled = False
         while True:
             elapsed = time.monotonic() - start
             remaining = max(0, math.ceil(total - elapsed))
             overlay.set_remaining(remaining)
             QApplication.processEvents()
+            if overlay.cancelled or _escape_pressed():
+                cancelled = True
+                break
             if elapsed >= total:
                 break
             time.sleep(0.05)
         overlay.hide()
         QApplication.processEvents()
         time.sleep(0.05)
+        return cancelled
 
 
 def _window_rect(hwnd: int | None) -> CaptureRect | None:
@@ -898,3 +922,21 @@ def _virtual_screen_rect() -> QRect:
     for screen in screens[1:]:
         rect = rect.united(screen.geometry())
     return rect
+
+
+def _escape_pressed() -> bool:
+    if sys.platform == "win32" and win32api is not None:
+        return bool(win32api.GetAsyncKeyState(0x1B) & 0x8000)
+    if sys.platform == "darwin":
+        try:
+            import Quartz
+
+            return bool(
+                Quartz.CGEventSourceKeyState(
+                    Quartz.kCGEventSourceStateCombinedSessionState,
+                    53,
+                )
+            )
+        except Exception:
+            return False
+    return False

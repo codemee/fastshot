@@ -60,7 +60,7 @@ Linux is not currently a primary target. X11 and Wayland differ substantially in
 - Immediate and delayed capture resolve the target first and capture the live image at countdown completion.
 - Full-screen, region, focused-window, and selected window/control capture work.
 - Browser transient URLs/tooltips are not mistaken for the focused window.
-- Escape cancels region/window selection.
+- Escape cancels delayed countdowns and region/window selection.
 - Include Cursor captures the current real pointer.
 - New captures appear at the editor's top-left.
 - Clipboard content pastes into common applications.

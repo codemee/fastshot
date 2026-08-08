@@ -3,6 +3,7 @@ from PIL import Image
 from fastshot.capture import (
     CaptureRect,
     CaptureService,
+    RegionSelector,
     WindowCaptureTarget,
     _FrozenDesktop,
 )
@@ -98,6 +99,36 @@ def test_freeze_desktop_counts_down_before_capture_and_uses_freeze_time_cursor(m
         ("grab", rect),
         ("cursor", image, rect),
     ]
+
+
+def test_delayed_region_cancel_stops_before_freeze_and_selection(monkeypatch):
+    monkeypatch.setattr("fastshot.capture.sys.platform", "win32")
+    service = CaptureService()
+    monkeypatch.setattr(service, "_countdown", lambda _seconds: True)
+    monkeypatch.setattr(
+        service,
+        "_fullscreen_rect",
+        lambda: (_ for _ in ()).throw(AssertionError("desktop should not be captured")),
+    )
+    monkeypatch.setattr(
+        service,
+        "_select_region",
+        lambda _frozen: (_ for _ in ()).throw(AssertionError("selector should not open")),
+    )
+
+    image = service.capture(CaptureMode.REGION, CaptureSettings(delay_seconds=3))
+
+    assert image is None
+    assert service._last_capture is None
+
+
+def test_region_selector_poll_cancels_without_keyboard_focus(qt_app, monkeypatch):
+    selector = RegionSelector()
+    monkeypatch.setattr("fastshot.capture._escape_pressed", lambda: True)
+
+    selector.poll()
+
+    assert selector.cancelled
 
 
 def test_zero_delay_region_can_freeze_before_hotkey_returns(monkeypatch):
