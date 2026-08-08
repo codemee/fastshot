@@ -14,8 +14,9 @@ Image drag/drop and paste use Qt `QMimeData`, `QUrl`, and clipboard APIs. On mac
 
 - Global shortcuts use `RegisterHotKey` and consume `WM_HOTKEY`.
 - The toolbar keyboard icon configures the four capture shortcuts and the repeat action; Windows probes `RegisterHotKey` conflicts before applying them.
-- Repeat Previous Capture defaults to `Alt+Shift+Q`, is configurable, and preserves the previous region or selected window/control target.
+- Repeat Previous Capture defaults to `Ctrl+Shift+Q`, is configurable, and preserves the previous region or selected window/control target.
 - Full-screen/region capture uses `mss` with Pillow `ImageGrab` fallback.
+- Region capture freezes the virtual desktop before showing the selector, preserving transient menus that disappear on focus loss.
 - Focused-window bounds use DWM extended frame bounds.
 - Window/control selection prefers UI Automation with HWND fallback.
 - Real cursor images are converted from Win32 handles best-effort.
@@ -23,7 +24,7 @@ Image drag/drop and paste use Qt `QMimeData`, `QUrl`, and clipboard APIs. On mac
 
 ### macOS
 
-- Quartz event taps consume `Option+Shift+A/R/F/W`.
+- Quartz event taps consume `Ctrl+Shift+A/R/F/W`.
 - The shortcut listener supports user-configured Ctrl/Shift/Option plus A–Z combinations, persisted with `QSettings`.
 - Screen Recording permission is checked/requested.
 - Accessibility `AXFocusedWindow` is preferred; Core Graphics window fallback avoids transient browser popups.

@@ -139,16 +139,38 @@ class FastShotApplication(QObject):
         self.app.quit()
 
     def capture_mode(self, mode: CaptureMode) -> None:
-        self._start_capture(lambda: self.capture.capture(mode, self.window.capture_settings))
+        settings = self.window.capture_settings
+        frozen_selection = None
+
+        def freeze_before_hotkey_returns() -> None:
+            nonlocal frozen_selection
+            frozen_selection = self.capture.prepare_frozen_selection(mode, settings)
+
+        self._start_capture(
+            lambda: self.capture.capture(mode, settings, frozen_selection),
+            before_event_flush=freeze_before_hotkey_returns,
+        )
 
     def repeat_capture(self) -> None:
         self._start_capture(lambda: self.capture.repeat(self.window.capture_settings))
 
-    def _start_capture(self, capture) -> None:
+    def _start_capture(self, capture, before_event_flush=None) -> None:
         if self._capture_in_progress:
             return
         self._capture_in_progress = True
         self.window.hide()
+        if before_event_flush is not None:
+            try:
+                before_event_flush()
+            except Exception as exc:  # pragma: no cover - UI guard
+                traceback.print_exc()
+                QMessageBox.warning(
+                    self.window,
+                    "FastShot",
+                    self.language_manager.text("capture_failed", error=exc),
+                )
+                self._capture_in_progress = False
+                return
         QApplication.processEvents()
 
         def do_capture() -> None:
