@@ -19,9 +19,9 @@
 
 - `capture.py`
   - 管理所有截圖模式：全螢幕、矩形區域、焦點視窗、選取視窗/控制項。
-  - Windows 特有能力集中於此：DWM frame bounds、UI Automation 控制項 hit-test、真實游標 bitmap、`mss`/`ImageGrab` fallback。
+  - Windows 特有能力集中於此：焦點視窗與選取頂層視窗的 DWM frame bounds、UI Automation 控制項 hit-test、真實游標 bitmap、`mss`/`ImageGrab` fallback。
   - macOS 平台能力委派至 `platforms/macos.py`，包含權限、`AXFocusedWindow`、控制項 hit-test、游標與 Quartz event tap。
-  - 延遲截圖流程也在此：先決定目標矩形，再顯示倒數 overlay，最後擷取即時畫面。
+  - 延遲截圖流程也在此：Windows 互動式選取於倒數後凍結桌面，其他模式則先決定目標矩形，再倒數並擷取即時畫面。
 
 - `platforms/macos.py`
   - 使用 Accessibility 的 focused window，避免把同程序的 transient popup 當成焦點視窗。
@@ -73,10 +73,10 @@
 
 1. `app.py` 收到全域快捷鍵。
 2. 編輯視窗先隱藏，避免被截入畫面。
-3. Windows 的無延遲矩形區域擷取會在 `WM_HOTKEY` 返回前擷取整個虛擬桌面，再以該凍結畫面作為選取 overlay 的背景；即使目標程式隨後關閉功能表，最後仍從凍結畫面裁切。
+3. Windows 的無延遲矩形區域與視窗／控制項選取會在 `WM_HOTKEY` 返回前擷取整個虛擬桌面；視窗／控制項模式也會保存暫態視窗及 UI Automation 功能表控制項邊界。即使目標程式隨後關閉 live menu，overlay 仍能選取凍結畫面中的功能表並從該畫面裁切。
 4. 其他模式由 `CaptureService._rect_for_mode()` 決定擷取矩形。
-5. 若有延遲，顯示右下角倒數 overlay，期間可按 `Esc` 取消；矩形區域擷取會在倒數後凍結畫面，其他模式則在決定矩形後倒數。
-6. 凍結的矩形區域直接從保存畫面裁切；其他模式在 overlay 隱藏後呼叫 `_grab_rect()` 擷取畫面。
+5. 若有延遲，顯示右下角倒數 overlay，期間可按 `Esc` 取消；矩形區域與視窗／控制項選取會在倒數後凍結畫面，其他模式則在決定矩形後倒數。
+6. 凍結的矩形區域與視窗／控制項直接從保存畫面裁切；其他模式在 overlay 隱藏後呼叫 `_grab_rect()` 擷取畫面。
 7. 若啟用包含游標，best-effort 貼上凍結或即時擷取當下的真實游標。
 8. `EditorWindow.add_shot()` 建立新頁籤並顯示於左上角。
 9. `EditorWindow.copy_current()` 複製目前影像到剪貼簿。

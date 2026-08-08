@@ -1,11 +1,18 @@
+from types import SimpleNamespace
+
 from PIL import Image
+from PySide6.QtCore import QPoint, QPointF, Qt
+from PySide6.QtGui import QMouseEvent
 
 from fastshot.capture import (
     CaptureRect,
     CaptureService,
     RegionSelector,
     WindowCaptureTarget,
+    WindowSelector,
     _FrozenDesktop,
+    _cancel_windows_menu_mode,
+    _uia_target_at_point,
 )
 from fastshot.settings import CaptureMode, CaptureSettings
 
@@ -41,27 +48,32 @@ def test_repeat_region_reuses_the_previous_coordinates(monkeypatch):
 
 
 def test_repeat_selected_window_tracks_it_and_silently_stops_after_it_disappears(monkeypatch):
+    monkeypatch.setattr("fastshot.capture.sys.platform", "win32")
     service = CaptureService()
     original = CaptureRect(10, 20, 300, 200)
     moved = CaptureRect(100, 120, 300, 200)
     resolutions = iter((moved, None))
     target = WindowCaptureTarget(original, lambda: next(resolutions))
+    desktop = _FrozenDesktop(CaptureRect(0, 0, 500, 400), Image.new("RGB", (500, 400)))
     captured = []
-    monkeypatch.setattr(service, "_select_window_target", lambda: target)
+    monkeypatch.setattr(
+        service,
+        "_freeze_desktop",
+        lambda _settings: (_ for _ in ()).throw(AssertionError("desktop was frozen twice")),
+    )
+    monkeypatch.setattr(service, "_select_window_target", lambda frozen: target)
     monkeypatch.setattr(
         service,
         "_capture_rect_for_mode",
         lambda mode, rect, _settings: captured.append((mode, rect)) or _image(),
     )
 
-    service.capture(CaptureMode.WINDOW_UNDER_CURSOR, CaptureSettings())
+    first = service.capture(CaptureMode.WINDOW_UNDER_CURSOR, CaptureSettings(), desktop)
     assert service.repeat(CaptureSettings()) is not None
     assert service.repeat(CaptureSettings()) is None
 
-    assert captured == [
-        (CaptureMode.WINDOW_UNDER_CURSOR, original),
-        (CaptureMode.WINDOW_UNDER_CURSOR, moved),
-    ]
+    assert first.size == (300, 200)
+    assert captured == [(CaptureMode.WINDOW_UNDER_CURSOR, moved)]
 
 
 def test_frozen_desktop_crop_uses_virtual_screen_coordinates():
@@ -129,13 +141,110 @@ def test_region_selector_poll_cancels_without_keyboard_focus(qt_app, monkeypatch
     selector.poll()
 
     assert selector.cancelled
+    selector.deleteLater()
+    qt_app.processEvents()
 
 
-def test_zero_delay_region_can_freeze_before_hotkey_returns(monkeypatch):
+def test_window_selector_consumes_release_and_uses_its_position(qt_app, monkeypatch):
+    selector = WindowSelector(Image.new("RGB", (2, 2)))
+    selected = WindowCaptureTarget(CaptureRect(10, 20, 30, 40), lambda: None)
+    release_point = QPoint(25, 35)
+    monkeypatch.setattr(
+        selector,
+        "_target_at_point",
+        lambda point, use_uia: selected if point == release_point and use_uia else None,
+    )
+    event = QMouseEvent(
+        QMouseEvent.Type.MouseButtonRelease,
+        QPointF(1, 1),
+        QPointF(release_point),
+        Qt.MouseButton.LeftButton,
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
+    )
+
+    selector.mouseReleaseEvent(event)
+
+    assert event.isAccepted()
+    assert selector.target is selected
+    assert selector.target_rect == selected.rect
+    selector.deleteLater()
+    qt_app.processEvents()
+
+
+def test_window_selector_prefers_frozen_transient_target(qt_app, monkeypatch):
+    menu = WindowCaptureTarget(CaptureRect(10, 10, 80, 100), lambda: None)
+    item = WindowCaptureTarget(CaptureRect(10, 30, 80, 20), lambda: None)
+    selector = WindowSelector(Image.new("RGB", (2, 2)), (menu, item))
+    monkeypatch.setattr("fastshot.capture.sys.platform", "win32")
+
+    selected = selector._target_at_point(QPoint(20, 35), use_uia=True)
+
+    assert selected is item
+    selector.deleteLater()
+    qt_app.processEvents()
+
+
+def test_uia_top_level_window_uses_native_dwm_target(monkeypatch):
+    native = WindowCaptureTarget(CaptureRect(10, 20, 300, 200), lambda: None)
+    element = SimpleNamespace(
+        CurrentIsOffscreen=False,
+        CurrentBoundingRectangle=SimpleNamespace(left=2, top=12, right=318, bottom=228),
+        CurrentControlType=50032,
+        CurrentNativeWindowHandle=123,
+    )
+    automation = SimpleNamespace(ElementFromPoint=lambda _point: element)
+    monkeypatch.setattr("fastshot.capture.sys.platform", "win32")
+    monkeypatch.setattr(
+        "fastshot.capture._uia_automation", lambda: (automation, lambda x, y: (x, y))
+    )
+    monkeypatch.setattr(
+        "fastshot.capture._window_target_from_hwnd",
+        lambda hwnd: native if hwnd == 123 else None,
+    )
+
+    assert _uia_target_at_point(QPoint(50, 60)) is native
+
+
+def test_windows_menu_mode_is_cancelled_for_menu_owner_and_foreground(monkeypatch):
+    sent = []
+
+    def get_gui_thread_info(_thread_id, pointer):
+        pointer._obj.hwndMenuOwner = 222
+        pointer._obj.hwndActive = 111
+        return True
+
+    monkeypatch.setattr("fastshot.capture.sys.platform", "win32")
+    monkeypatch.setattr(
+        "fastshot.capture.win32gui",
+        SimpleNamespace(
+            GetForegroundWindow=lambda: 111,
+            SendMessageTimeout=lambda *args: sent.append(args),
+        ),
+    )
+    monkeypatch.setattr(
+        "fastshot.capture.win32process",
+        SimpleNamespace(GetWindowThreadProcessId=lambda _hwnd: (12, 34)),
+    )
+    monkeypatch.setattr(
+        "fastshot.capture.windll",
+        SimpleNamespace(user32=SimpleNamespace(GetGUIThreadInfo=get_gui_thread_info)),
+    )
+
+    _cancel_windows_menu_mode()
+
+    assert [call[0] for call in sent] == [222, 111]
+
+
+def test_zero_delay_interactive_selection_can_freeze_before_hotkey_returns(monkeypatch):
     monkeypatch.setattr("fastshot.capture.sys.platform", "win32")
     service = CaptureService()
     frozen = _FrozenDesktop(CaptureRect(0, 0, 1, 1), _image())
+    menu_target = WindowCaptureTarget(CaptureRect(0, 0, 1, 1), lambda: None)
     monkeypatch.setattr(service, "_freeze_desktop", lambda _settings: frozen)
+    monkeypatch.setattr(
+        "fastshot.capture._snapshot_windows_transient_targets", lambda: (menu_target,)
+    )
 
     prepared = service.prepare_frozen_selection(CaptureMode.REGION, CaptureSettings())
     delayed = service.prepare_frozen_selection(
@@ -149,7 +258,9 @@ def test_zero_delay_region_can_freeze_before_hotkey_returns(monkeypatch):
     assert prepared is frozen
     assert delayed is None
     assert fullscreen is None
-    assert selected_window is None
+    assert selected_window is not None
+    assert selected_window.image is frozen.image
+    assert selected_window.targets == (menu_target,)
 
 
 def test_repeat_before_any_successful_capture_does_nothing():

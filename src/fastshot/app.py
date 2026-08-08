@@ -17,6 +17,13 @@ from fastshot.main_window import EditorWindow
 from fastshot.settings import CaptureMode
 from fastshot.theme import ThemeManager
 
+if sys.platform == "win32":
+    import win32con
+    import win32gui
+else:  # pragma: no cover - platform branch
+    win32con = None
+    win32gui = None
+
 
 class MSG(ctypes.Structure):
     _fields_ = [
@@ -32,6 +39,24 @@ class MSG(ctypes.Structure):
 class HotkeyBridge(QObject):
     captureRequested = Signal(CaptureMode)
     repeatRequested = Signal()
+
+
+def _activate_window(window) -> None:
+    window.showNormal()
+    window.raise_()
+    window.activateWindow()
+    QApplication.processEvents()
+    if sys.platform == "win32":
+        hwnd = int(window.winId())
+        win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+        win32gui.BringWindowToTop(hwnd)
+        win32gui.SetForegroundWindow(hwnd)
+        if win32gui.GetForegroundWindow() == hwnd:
+            return
+        flags = win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_SHOWWINDOW
+        win32gui.SetWindowPos(hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0, flags)
+        win32gui.SetWindowPos(hwnd, win32con.HWND_NOTOPMOST, 0, 0, 0, 0, flags)
+        win32gui.SetForegroundWindow(hwnd)
 
 
 class WindowsHotkeyFilter(QAbstractNativeEventFilter):
@@ -129,9 +154,7 @@ class FastShotApplication(QObject):
         return self.app.exec()
 
     def show_window(self) -> None:
-        self.window.showNormal()
-        self.window.raise_()
-        self.window.activateWindow()
+        _activate_window(self.window)
 
     def quit(self) -> None:
         self._unregister_hotkeys()
@@ -189,6 +212,11 @@ class FastShotApplication(QObject):
                 self._capture_in_progress = False
                 return
             self.window.add_shot(image)
+            self.show_window()
+            # Selection completion can post a delayed activation restore after
+            # SetForegroundWindow initially succeeds. Reassert the editor once
+            # that input transaction has fully settled.
+            QTimer.singleShot(200, self.show_window)
             self.window.copy_current()
             self._capture_in_progress = False
 

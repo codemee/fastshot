@@ -16,9 +16,10 @@ Image drag/drop and paste use Qt `QMimeData`, `QUrl`, and clipboard APIs. On mac
 - The toolbar keyboard icon configures the four capture shortcuts and the repeat action; Windows probes `RegisterHotKey` conflicts before applying them.
 - Repeat Previous Capture defaults to `Ctrl+Shift+Q`, is configurable, and preserves the previous region or selected window/control target.
 - Full-screen/region capture uses `mss` with Pillow `ImageGrab` fallback.
-- Region capture freezes the virtual desktop before showing the selector, preserving transient menus that disappear on focus loss.
-- Focused-window bounds use DWM extended frame bounds.
+- Region and window/control selection freeze the virtual desktop before showing the selector, preserving transient menus that disappear on focus loss.
+- Focused windows and selected top-level windows use DWM extended frame bounds to exclude invisible resize frames; controls inside a window retain their UI Automation bounds.
 - Window/control selection prefers UI Automation with HWND fallback.
+- The snapshot also saves transient windows and UI Automation menu-control bounds from the foreground thread. FastShot then sends `WM_CANCELMODE` to close the live popup; selection prefers the saved controls, so menus in the frozen image remain selectable. The full-screen selector receives and consumes mouse input itself. For ordinary windows it lazily builds and caches a UI Automation target map for the HWND under the pointer, eliminating the input-transparent overlay, off-screen mouse catcher, and global mouse grab.
 - Real cursor images are converted from Win32 handles best-effort.
 - Tray, editor, clipboard, save, crop, and drawing workflows are implemented.
 
@@ -57,8 +58,9 @@ Linux is not currently a primary target. X11 and Wayland differ substantially in
 - Shortcuts trigger capture and are not forwarded to the focused application.
 - The shortcut panel opens with the active values; **Use defaults** changes only the pending panel values, OK applies and persists them, and Cancel leaves the active settings unchanged.
 - On macOS, custom Ctrl/Shift/Option plus letter combinations trigger the intended capture mode and remain configured after restart.
-- Immediate and delayed capture resolve the target first and capture the live image at countdown completion.
+- Immediate and delayed capture behave consistently: Windows region and window/control selection freeze the desktop after the countdown, while other modes resolve the target before counting down and capturing the live image.
 - Full-screen, region, focused-window, and selected window/control capture work.
+- After a successful capture, the FastShot editor is restored and requests foreground activation. If the foreground lock rejects the ordinary `SetForegroundWindow` call, a brief topmost/not-topmost Z-order raise is used as a fallback. FastShot checks and reasserts the editor foreground state 200ms after capture completes.
 - Browser transient URLs/tooltips are not mistaken for the focused window.
 - Escape cancels delayed countdowns and region/window selection.
 - Include Cursor captures the current real pointer.

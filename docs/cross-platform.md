@@ -21,9 +21,10 @@ Windows 是目前主要實作平台。
 - 預設使用 `Ctrl+Shift+Q` 重複前一次成功擷取（可自訂），並保留前次矩形或選取的視窗／控制項目標。
 - 可由工具列鍵盤圖示設定四種截圖方式與重複擷取動作的快捷鍵；Windows 在套用前以 `RegisterHotKey` 探測是否被其他程式占用。
 - 全螢幕/矩形擷取：`mss`，失敗時 fallback 到 Pillow `ImageGrab`。
-- 矩形區域擷取會先凍結虛擬桌面，再從凍結畫面裁切，以保留功能表等失去焦點即消失的暫態內容。
-- 焦點視窗擷取：DWM `DWMWA_EXTENDED_FRAME_BOUNDS`，避免截到不可見 resize frame。
+- 矩形區域與視窗／控制項選取會先凍結虛擬桌面，再從凍結畫面裁切，以保留功能表等失去焦點即消失的暫態內容。
+- 焦點視窗及選取到的頂層視窗：使用 DWM `DWMWA_EXTENDED_FRAME_BOUNDS`，避免截到不可見 resize frame；視窗內控制項則使用 UI Automation 邊界。
 - 選取視窗/控制項：UI Automation 優先，傳統 HWND hit-test fallback。
+- snapshot 時會一併保存前景執行緒的暫態視窗及 UI Automation 功能表控制項邊界。之後向原生 menu owner 傳送 `WM_CANCELMODE` 關閉 live popup menu，選取時優先命中保存的控制項，因此凍結畫面上的功能表仍可選取。全螢幕 selector 本身接收並吞掉滑鼠事件；一般視窗則依游標所在 HWND 延遲建立並快取該視窗的 UI Automation target map，不需要 input-transparent overlay、畫面外 mouse catcher 或全域 mouse grab。
 - 真實游標貼圖：Win32 cursor handle best-effort 轉 RGBA bitmap，失敗不阻斷截圖。
 - 系統匣、編輯器、剪貼簿、存檔、裁切與繪圖工具。
 
@@ -82,8 +83,9 @@ Linux 尚未作為主要目標。Wayland/X11 差異很大，尤其是全域快�
 - 快捷鍵可觸發，且不把按鍵送給焦點 app。
 - 快捷鍵設定面板會顯示目前值；「使用預設」只改變面板暫存值，OK 套用並保留，Cancel 不改變目前設定。
 - macOS 自訂 Ctrl／Shift／Option 與字母組合可觸發正確的截圖方式，重新啟動後設定仍保留。
-- 無延遲和有延遲流程都符合：Windows 矩形區域擷取於倒數後凍結桌面，其他模式則先決定目標再倒數擷取。
+- 無延遲和有延遲流程都符合：Windows 矩形區域與視窗／控制項選取於倒數後凍結桌面，其他模式則先決定目標再倒數擷取。
 - 全螢幕、矩形、焦點視窗、選取視窗/控制項都可用。
+- 擷取成功後 FastShot 編輯器會恢復並要求成為 Windows 前景視窗；若一般 `SetForegroundWindow` 被前景鎖定拒絕，會以短暫 topmost／not-topmost 的 Z-order 提升作為 fallback。擷取完成 200ms 後會再確認一次編輯器位於前景。
 - Chrome 等具有 transient popup 的應用程式，焦點視窗擷取不會誤截連結網址或 tooltip。
 - ESC 可取消延遲倒數及矩形／視窗選取。
 - 包含游標時顯示當下真實游標。

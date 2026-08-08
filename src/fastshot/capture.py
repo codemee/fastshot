@@ -81,8 +81,57 @@ class ICONINFO(Structure):
     ]
 
 
+class GUITHREADINFO(Structure):
+    _fields_ = [
+        ("cbSize", DWORD),
+        ("flags", DWORD),
+        ("hwndActive", HWND),
+        ("hwndFocus", HWND),
+        ("hwndCapture", HWND),
+        ("hwndMenuOwner", HWND),
+        ("hwndMoveSize", HWND),
+        ("hwndCaret", HWND),
+        ("rcCaret", RECT),
+    ]
+
+
 _UIA_AUTOMATION = None
 _UIA_POINT = None
+
+
+def _cancel_windows_menu_mode() -> None:
+    """End the foreground thread's live native menu after its snapshot is saved."""
+    if sys.platform != "win32" or win32gui is None or win32process is None or windll is None:
+        return
+    try:
+        foreground = win32gui.GetForegroundWindow()
+        if not foreground:
+            return
+        thread_id, _process_id = win32process.GetWindowThreadProcessId(foreground)
+        info = GUITHREADINFO()
+        info.cbSize = sizeof(GUITHREADINFO)
+        candidates: list[int] = []
+        if windll.user32.GetGUIThreadInfo(thread_id, byref(info)):
+            candidates.extend((info.hwndMenuOwner, info.hwndActive))
+        candidates.append(foreground)
+        seen: set[int] = set()
+        for candidate in candidates:
+            hwnd = int(candidate or 0)
+            if not hwnd or hwnd in seen:
+                continue
+            seen.add(hwnd)
+            win32gui.SendMessageTimeout(
+                hwnd,
+                win32con.WM_CANCELMODE,
+                0,
+                0,
+                win32con.SMTO_ABORTIFHUNG,
+                100,
+            )
+    except Exception:
+        # Some elevated or protected applications reject cross-process window
+        # queries. Selection can still continue with the frozen overlay.
+        return
 
 
 @dataclass(frozen=True)
@@ -138,6 +187,7 @@ class _LastCapture:
 class _FrozenDesktop:
     rect: CaptureRect
     image: Image.Image
+    targets: tuple[WindowCaptureTarget, ...] = ()
 
     def crop(self, rect: CaptureRect) -> Image.Image | None:
         clipped = rect.intersect(self.rect)
@@ -214,27 +264,33 @@ class RegionSelector(QWidget):
 
 
 class WindowSelector(QWidget):
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        frozen_desktop: Image.Image | None = None,
+        frozen_targets: tuple[WindowCaptureTarget, ...] = (),
+    ) -> None:
         super().__init__(None)
         self.target_rect: CaptureRect | None = None
         self.target: WindowCaptureTarget | None = None
         self._last_query_at = 0.0
-        self._left_was_down = False
+        self._uia_target_cache: dict[int, tuple[WindowCaptureTarget, ...]] = {}
         self.cancelled = False
+        self.frozen_desktop = pil_to_qimage(frozen_desktop) if frozen_desktop is not None else None
+        self.frozen_targets = frozen_targets
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.Tool
-            | Qt.WindowType.WindowTransparentForInput
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setMouseTracking(True)
         self.setGeometry(_virtual_screen_rect())
 
     def paintEvent(self, _event) -> None:
         painter = QPainter(self)
+        if self.frozen_desktop is not None:
+            painter.drawImage(self.rect(), self.frozen_desktop)
         painter.fillRect(self.rect(), QColor(0, 0, 0, 40))
         if self.target_rect is not None:
             top_left = self.mapFromGlobal(QPoint(self.target_rect.left, self.target_rect.top))
@@ -242,6 +298,11 @@ class WindowSelector(QWidget):
                 top_left,
                 QSize(self.target_rect.width, self.target_rect.height),
             ).intersected(self.rect().adjusted(1, 1, -2, -2))
+            if self.frozen_desktop is not None:
+                painter.save()
+                painter.setClipRect(rect)
+                painter.drawImage(self.rect(), self.frozen_desktop)
+                painter.restore()
             painter.fillRect(rect, QColor(255, 146, 43, 35))
             pen_width = 3
             painter.setPen(QPen(QColor("#ff922b"), pen_width))
@@ -276,13 +337,22 @@ class WindowSelector(QWidget):
             if rect != self.target_rect:
                 self.target_rect = rect
                 self.update()
-        left_is_down = bool(win32api.GetAsyncKeyState(0x01) & 0x8000)
-        if self._left_was_down and not left_is_down:
-            if self.target_rect is None:
-                self.target = self._target_at_point(point, use_uia=True)
-                self.target_rect = self.target.rect if self.target is not None else None
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            point = event.globalPosition().toPoint()
+            self.target = self._target_at_point(point, use_uia=True)
+            self.target_rect = self.target.rect if self.target is not None else None
+            event.accept()
             self.close()
-        self._left_was_down = left_is_down
+            return
+        super().mouseReleaseEvent(event)
 
     def _poll_macos(self) -> None:
         from AppKit import NSEvent
@@ -303,10 +373,8 @@ class WindowSelector(QWidget):
             if rect != self.target_rect:
                 self.target_rect = rect
                 self.update()
-        left_is_down = bool(buttons & 1)
-        if self._left_was_down and not left_is_down:
-            self.close()
-        self._left_was_down = left_is_down
+        if buttons & 1:
+            return
 
     def keyPressEvent(self, event) -> None:
         if event.key() == Qt.Key.Key_Escape:
@@ -327,10 +395,13 @@ class WindowSelector(QWidget):
                 CaptureRect(*bounds),
                 lambda: _capture_rect_from_bounds(capture_target_bounds(native_target)),
             )
-        return _window_target_at_point(
+        frozen = [target for target in self.frozen_targets if _rect_contains(target.rect, point)]
+        if frozen:
+            return min(frozen, key=lambda target: target.rect.width * target.rect.height)
+        return _window_target_below_overlay(
             point,
-            exclude_hwnd=None if use_uia else int(self.winId()),
-            use_uia=use_uia,
+            int(self.winId()),
+            self._uia_target_cache if use_uia else None,
         )
 
 
@@ -395,9 +466,16 @@ class CaptureService:
         if (
             sys.platform == "win32"
             and settings.delay_seconds <= 0
-            and mode == CaptureMode.REGION
+            and mode in {CaptureMode.REGION, CaptureMode.WINDOW_UNDER_CURSOR}
         ):
-            return self._freeze_desktop(settings)
+            frozen = self._freeze_desktop(settings)
+            if frozen is not None and mode == CaptureMode.WINDOW_UNDER_CURSOR:
+                return _FrozenDesktop(
+                    frozen.rect,
+                    frozen.image,
+                    _snapshot_windows_transient_targets(),
+                )
+            return frozen
         return None
 
     def capture(
@@ -414,15 +492,22 @@ class CaptureService:
                     "Screen Recording permission is required. Enable FastShot (or its terminal) "
                     "in System Settings > Privacy & Security > Screen Recording."
                 )
-        frozen = frozen_selection if mode == CaptureMode.REGION else None
-        if frozen is None and sys.platform == "win32" and mode == CaptureMode.REGION:
+        frozen_modes = {CaptureMode.REGION, CaptureMode.WINDOW_UNDER_CURSOR}
+        frozen = frozen_selection if mode in frozen_modes else None
+        if frozen is None and sys.platform == "win32" and mode in frozen_modes:
             frozen = self._freeze_desktop(settings)
             if frozen is None:
                 return None
+            if mode == CaptureMode.WINDOW_UNDER_CURSOR:
+                frozen = _FrozenDesktop(
+                    frozen.rect,
+                    frozen.image,
+                    _snapshot_windows_transient_targets(),
+                )
 
         window_target = None
         if mode == CaptureMode.WINDOW_UNDER_CURSOR:
-            window_target = self._select_window_target()
+            window_target = self._select_window_target(frozen)
             rect = window_target.rect if window_target is not None else None
         elif mode == CaptureMode.REGION:
             rect = self._select_region(frozen.image if frozen is not None else None)
@@ -591,8 +676,16 @@ class CaptureService:
         paste_y = screen_y - rect.top - hotspot_y
         image.paste(cursor_image, (paste_x, paste_y), cursor_image)
 
-    def _select_window_target(self) -> WindowCaptureTarget | None:
-        selector = WindowSelector()
+    def _select_window_target(
+        self, frozen_desktop: _FrozenDesktop | None = None
+    ) -> WindowCaptureTarget | None:
+        selector = WindowSelector(
+            frozen_desktop.image if frozen_desktop is not None else None,
+            frozen_desktop.targets if frozen_desktop is not None else (),
+        )
+        _cancel_windows_menu_mode()
+        time.sleep(0.05)
+        QApplication.processEvents()
         selector.show()
         selector.raise_()
         selector.activateWindow()
@@ -602,6 +695,7 @@ class CaptureService:
             selector.poll()
             QApplication.processEvents()
             time.sleep(0.01)
+        QApplication.processEvents()
         if selector.cancelled:
             return None
         return selector.target
@@ -672,6 +766,10 @@ def _window_target_at_point(
     hwnd = _window_from_point(point, exclude_hwnd)
     if not hwnd:
         return None
+    return _window_target_from_hwnd(hwnd)
+
+
+def _window_target_from_hwnd(hwnd: int) -> WindowCaptureTarget | None:
     rect = _window_rect(hwnd)
     if rect is None:
         return None
@@ -693,6 +791,29 @@ def _window_target_at_point(
         return _window_rect(hwnd)
 
     return WindowCaptureTarget(rect, resolve)
+
+
+def _window_target_below_overlay(
+    point: QPoint,
+    overlay_hwnd: int,
+    uia_cache: dict[int, tuple[WindowCaptureTarget, ...]] | None,
+) -> WindowCaptureTarget | None:
+    hwnd = _window_from_point(point, overlay_hwnd)
+    if not hwnd:
+        return None
+    if uia_cache is not None:
+        try:
+            root_hwnd = win32gui.GetAncestor(hwnd, win32con.GA_ROOT) or hwnd
+        except Exception:
+            root_hwnd = hwnd
+        targets = uia_cache.get(root_hwnd)
+        if targets is None:
+            targets = _uia_targets_for_hwnd(root_hwnd)
+            uia_cache[root_hwnd] = targets
+        matches = [target for target in targets if _rect_contains(target.rect, point)]
+        if matches:
+            return min(matches, key=lambda target: target.rect.width * target.rect.height)
+    return _window_target_from_hwnd(hwnd)
 
 
 def _window_from_point(point: QPoint, exclude_hwnd: int | None = None) -> int | None:
@@ -762,25 +883,120 @@ def _uia_rect_at_point(point: QPoint) -> CaptureRect | None:
 def _uia_target_at_point(point: QPoint) -> WindowCaptureTarget | None:
     if sys.platform != "win32":
         return None
-    global _UIA_AUTOMATION, _UIA_POINT
     try:
-        if _UIA_AUTOMATION is None or _UIA_POINT is None:
-            import comtypes.client
-
-            comtypes.client.GetModule("UIAutomationCore.dll")
-            from comtypes.gen.UIAutomationClient import CUIAutomation, IUIAutomation, tagPOINT
-
-            _UIA_AUTOMATION = comtypes.client.CreateObject(CUIAutomation, interface=IUIAutomation)
-            _UIA_POINT = tagPOINT
-        element = _UIA_AUTOMATION.ElementFromPoint(_UIA_POINT(point.x(), point.y()))
+        automation, point_type = _uia_automation()
+        element = automation.ElementFromPoint(point_type(point.x(), point.y()))
         if not element:
             return None
-        initial = _uia_element_rect(element)
-        if initial is None:
-            return None
-        return WindowCaptureTarget(initial, lambda: _uia_element_rect(element))
+        return _uia_element_target(element)
     except Exception:
         return None
+
+
+def _uia_automation():
+    global _UIA_AUTOMATION, _UIA_POINT
+    if _UIA_AUTOMATION is None or _UIA_POINT is None:
+        import comtypes.client
+
+        comtypes.client.GetModule("UIAutomationCore.dll")
+        from comtypes.gen.UIAutomationClient import CUIAutomation, IUIAutomation, tagPOINT
+
+        _UIA_AUTOMATION = comtypes.client.CreateObject(CUIAutomation, interface=IUIAutomation)
+        _UIA_POINT = tagPOINT
+    return _UIA_AUTOMATION, _UIA_POINT
+
+
+def _uia_element_target(element) -> WindowCaptureTarget | None:
+    initial = _uia_element_rect(element)
+    if initial is None:
+        return None
+    # UIA top-level Window bounds can include the invisible resize frame.
+    # Prefer the HWND/DWM path for the whole window while retaining UIA bounds
+    # for controls inside it.
+    if int(element.CurrentControlType) == 50032:  # UIA_WindowControlTypeId
+        hwnd = int(element.CurrentNativeWindowHandle)
+        native_target = _window_target_from_hwnd(hwnd) if hwnd else None
+        if native_target is not None:
+            return native_target
+    return WindowCaptureTarget(initial, lambda: _uia_element_rect(element))
+
+
+def _uia_targets_for_hwnd(hwnd: int) -> tuple[WindowCaptureTarget, ...]:
+    try:
+        automation, _point_type = _uia_automation()
+        root = automation.ElementFromHandle(hwnd)
+        descendants = root.FindAll(4, automation.ControlViewCondition)
+        elements = [root]
+        elements.extend(descendants.GetElement(index) for index in range(descendants.Length))
+        targets: list[WindowCaptureTarget] = []
+        seen: set[CaptureRect] = set()
+        for element in elements:
+            target = _uia_element_target(element)
+            if target is None or target.rect in seen or _looks_like_desktop_rect(target.rect):
+                continue
+            seen.add(target.rect)
+            targets.append(target)
+        return tuple(targets)
+    except Exception:
+        return ()
+
+
+def _snapshot_windows_transient_targets() -> tuple[WindowCaptureTarget, ...]:
+    """Save menu/menu-item bounds before the live native menu is dismissed."""
+    if sys.platform != "win32" or win32gui is None or win32process is None:
+        return ()
+    try:
+        foreground = win32gui.GetForegroundWindow()
+        if not foreground:
+            return ()
+        thread_id, _process_id = win32process.GetWindowThreadProcessId(foreground)
+        windows = [foreground]
+
+        def collect(hwnd, _extra) -> bool:
+            if hwnd != foreground and win32gui.IsWindowVisible(hwnd):
+                windows.append(hwnd)
+            return True
+
+        win32gui.EnumThreadWindows(thread_id, collect, None)
+        automation, _point_type = _uia_automation()
+        control_type_property = 30003
+        menu_control_type = 50009
+        menu_item_control_type = 50011
+        menu_condition = automation.CreateOrCondition(
+            automation.CreatePropertyCondition(control_type_property, menu_control_type),
+            automation.CreatePropertyCondition(control_type_property, menu_item_control_type),
+        )
+        elements = []
+        for hwnd in dict.fromkeys(windows):
+            try:
+                root = automation.ElementFromHandle(hwnd)
+                matches = root.FindAll(4, menu_condition)  # TreeScope_Descendants
+                elements.extend(matches.GetElement(index) for index in range(matches.Length))
+            except Exception:
+                continue
+
+        targets: list[WindowCaptureTarget] = []
+        seen: set[CaptureRect] = set()
+        for element in elements:
+            rect = _uia_element_rect(element)
+            if rect is None or rect in seen or _looks_like_desktop_rect(rect):
+                continue
+            seen.add(rect)
+            targets.append(WindowCaptureTarget(rect, lambda element=element: _uia_element_rect(element)))
+
+        # Custom-drawn popup windows may not expose menu items through UIA.
+        # Preserve their top-level bounds so the popup itself remains selectable.
+        for hwnd in windows:
+            if hwnd == foreground:
+                continue
+            rect = _window_rect(hwnd)
+            if rect is None or rect in seen or _looks_like_desktop_rect(rect):
+                continue
+            seen.add(rect)
+            targets.append(WindowCaptureTarget(rect, lambda hwnd=hwnd: _window_rect(hwnd)))
+        return tuple(targets)
+    except Exception:
+        return ()
 
 
 def _uia_element_rect(element) -> CaptureRect | None:

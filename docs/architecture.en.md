@@ -29,10 +29,10 @@ This document introduces the FastShot codebase. Read [cross-platform.en.md](cros
 
 1. `app.py` receives a global shortcut.
 2. The editor hides so it is not captured.
-3. On Windows, zero-delay region capture saves the virtual desktop before `WM_HOTKEY` returns, then uses that frozen image behind the selection overlay. The final crop therefore retains transient menus even after the target application closes them.
-4. Other modes use `CaptureService._rect_for_mode()` to resolve the target rectangle.
-5. A delayed capture displays a bottom-right countdown that can be cancelled with `Esc`; region capture freezes the desktop after the countdown, while other modes count down after resolving the rectangle.
-6. Frozen regions are cropped from the saved desktop image; other modes hide the overlay and capture through `_grab_rect()`.
+3. On Windows, zero-delay region and window/control selection save the virtual desktop before `WM_HOTKEY` returns. Window/control mode also saves transient-window and UI Automation menu-control bounds, so the overlay can select and crop a menu from the frozen image after its live counterpart closes.
+4. Other modes use `CaptureService._rect_for_mode()` to resolve the target rectangle. Selected top-level UIA windows are normalized through HWND/DWM visible frame bounds, while child controls retain their UIA bounds.
+5. A delayed capture displays a bottom-right countdown that can be cancelled with `Esc`; region and window/control selection freeze the desktop after the countdown, while other modes count down after resolving the rectangle.
+6. Frozen regions and selected windows/controls are cropped from the saved desktop image; other modes hide the overlay and capture through `_grab_rect()`.
 7. If enabled, the native pointer at freeze or capture time is composited best-effort.
 8. `EditorWindow.add_shot()` creates a tab aligned to the editor's top-left.
 9. `EditorWindow.copy_current()` copies the image to the clipboard.
