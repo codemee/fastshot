@@ -1,6 +1,6 @@
 [project]
 name = "fastshot"
-version = "0.0.6"
+version = "0.0.7"
 description = "Keyboard-first cross-platform screenshot utility"
 readme = "README.md"
 requires-python = ">=3.11"
