@@ -37,6 +37,7 @@ Windows 是目前主要實作平台。
 - 透過 Screen Recording API 檢查並要求螢幕錄製權限。
 - 優先使用 Accessibility `AXFocusedWindow` 擷取焦點視窗；失敗時才從前景程序的 Core Graphics 視窗選擇最大正常視窗，避免 Chrome 連結網址等 transient popup 被誤判為焦點視窗。
 - 使用 Accessibility API hit-test 最小控制項，並將 bounds 限制在游標下視窗內；無效或未包含游標的結果會 fallback 至游標下視窗。
+- 無延遲矩形區域及視窗／控制項選取會在 selector 取得焦點前凍結桌面，保留原應用程式中失去焦點即消失的功能表。
 - 使用目前 `NSCursor` 圖像、hotspot 與游標座標貼入截圖。
 - 共用 Qt 剪貼簿、系統匣、編輯器與存檔流程。
 

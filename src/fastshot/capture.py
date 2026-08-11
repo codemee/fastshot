@@ -463,13 +463,23 @@ class CaptureService:
     def prepare_frozen_selection(
         self, mode: CaptureMode, settings: CaptureSettings
     ) -> _FrozenDesktop | None:
-        if (
-            sys.platform == "win32"
-            and settings.delay_seconds <= 0
-            and mode in {CaptureMode.REGION, CaptureMode.WINDOW_UNDER_CURSOR}
-        ):
+        zero_delay_interactive = settings.delay_seconds <= 0 and (
+            (
+                sys.platform == "win32"
+                and mode in {CaptureMode.REGION, CaptureMode.WINDOW_UNDER_CURSOR}
+            )
+            or (
+                sys.platform == "darwin"
+                and mode in {CaptureMode.REGION, CaptureMode.WINDOW_UNDER_CURSOR}
+            )
+        )
+        if zero_delay_interactive:
             frozen = self._freeze_desktop(settings)
-            if frozen is not None and mode == CaptureMode.WINDOW_UNDER_CURSOR:
+            if (
+                frozen is not None
+                and sys.platform == "win32"
+                and mode == CaptureMode.WINDOW_UNDER_CURSOR
+            ):
                 return _FrozenDesktop(
                     frozen.rect,
                     frozen.image,
