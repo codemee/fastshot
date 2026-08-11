@@ -263,5 +263,28 @@ def test_zero_delay_interactive_selection_can_freeze_before_hotkey_returns(monke
     assert selected_window.targets == (menu_target,)
 
 
+def test_macos_zero_delay_interactive_selection_freezes_before_selector_takes_focus(
+    monkeypatch,
+):
+    monkeypatch.setattr("fastshot.capture.sys.platform", "darwin")
+    service = CaptureService()
+    frozen = _FrozenDesktop(CaptureRect(0, 0, 1, 1), _image())
+    monkeypatch.setattr(service, "_freeze_desktop", lambda _settings: frozen)
+
+    prepared = service.prepare_frozen_selection(CaptureMode.REGION, CaptureSettings())
+    delayed = service.prepare_frozen_selection(
+        CaptureMode.REGION, CaptureSettings(delay_seconds=3)
+    )
+    fullscreen = service.prepare_frozen_selection(CaptureMode.FULLSCREEN, CaptureSettings())
+    selected_window = service.prepare_frozen_selection(
+        CaptureMode.WINDOW_UNDER_CURSOR, CaptureSettings()
+    )
+
+    assert prepared is frozen
+    assert delayed is None
+    assert fullscreen is None
+    assert selected_window is frozen
+
+
 def test_repeat_before_any_successful_capture_does_nothing():
     assert CaptureService().repeat(CaptureSettings()) is None
