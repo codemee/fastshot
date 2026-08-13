@@ -1,8 +1,8 @@
 # FShot
 
-[繁體中文](README.md) | [English](README.en.md)
+[繁體中文](https://github.com/codemee/fshot/blob/main/README.md) | [English](https://github.com/codemee/fshot/blob/main/README.en.md)
 
-FShot is a Python desktop screenshot utility focused on global shortcuts, a persistent system tray, tabbed editing, and fast copy/save workflows. Windows and macOS are currently supported. See [Cross-Platform Notes](docs/cross-platform.en.md) for platform permissions and acceptance guidance.
+FShot is a Python desktop screenshot utility focused on global shortcuts, a persistent system tray, tabbed editing, and fast copy/save workflows. Windows and macOS are currently supported. See [Cross-Platform Notes](https://github.com/codemee/fshot/blob/main/docs/cross-platform.en.md) for platform permissions and acceptance guidance.
 
 ## Current Status
 
@@ -12,28 +12,28 @@ FShot is a Python desktop screenshot utility focused on global shortcuts, a pers
 
 ## Quick Start
 
-Run the release without installing it:
+FShot is available from [PyPI](https://pypi.org/project/fshot/). Run the latest stable release without installing it:
 
 ```powershell
-uvx --from "fshot @ git+https://github.com/codemee/fshot.git@latest" fshot
+uvx fshot
 ```
 
-The first run downloads packages and creates a uv cache environment. Later runs reuse that cache. `latest` is a floating tag that points to the newest stable release. Use `uvx` for evaluation and `uv tool install` for regular use.
+The first run downloads the package from PyPI and creates a uv cache environment. Later runs reuse that cache. Use `uvx` for evaluation and `uv tool install` for regular use.
 
-Install the release from GitHub:
+Install from PyPI with uv:
 
 ```powershell
-uv tool install "fshot @ git+https://github.com/codemee/fshot.git@latest"
+uv tool install fshot
 fshot
 ```
 
-Upgrade an installed version:
+After installation, run the app with `fshot`. Upgrade to the latest PyPI release with:
 
 ```powershell
 uv tool upgrade fshot
 ```
 
-Install the latest development version from `main`:
+Install the latest development version directly from GitHub's `main` branch:
 
 ```powershell
 uv tool install --force "fshot @ git+https://github.com/codemee/fshot.git@main"
@@ -81,9 +81,9 @@ You can also double-click the name of a saved tab to rename it. The original fil
 
 ## Project Docs
 
-- [PRD](PRD.en.md): Original product requirements.
-- [Architecture](docs/architecture.en.md): Project structure, modules, and data flow.
-- [Cross-Platform Notes](docs/cross-platform.en.md): Windows/macOS/Linux differences and platform acceptance guidance.
+- [PRD](https://github.com/codemee/fshot/blob/main/PRD.en.md): Original product requirements.
+- [Architecture](https://github.com/codemee/fshot/blob/main/docs/architecture.en.md): Project structure, modules, and data flow.
+- [Cross-Platform Notes](https://github.com/codemee/fshot/blob/main/docs/cross-platform.en.md): Windows/macOS/Linux differences and platform acceptance guidance.
 
 ## Development
 
