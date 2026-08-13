@@ -2,9 +2,9 @@
 
 [繁體中文](cross-platform.md) | [English](cross-platform.en.md)
 
-Most FastShot UI code uses reusable PySide6 components. Capture, global shortcuts, cursor extraction, window selection, permissions, and some clipboard behavior remain platform-specific.
+Most FShot UI code uses reusable PySide6 components. Capture, global shortcuts, cursor extraction, window selection, permissions, and some clipboard behavior remain platform-specific.
 
-Themes are shared through `ThemeManager` and Qt system color hints. Language is shared through `LanguageManager`; macOS prioritizes `AppleLanguages`, while other platforms use the Qt locale. Tab close buttons follow platform placement and use FastShot's high-contrast icon. Windows places the dirty marker left of the title.
+Themes are shared through `ThemeManager` and Qt system color hints. Language is shared through `LanguageManager`; macOS prioritizes `AppleLanguages`, while other platforms use the Qt locale. Tab close buttons follow platform placement and use FShot's high-contrast icon. Windows places the dirty marker left of the title.
 
 Image drag/drop and paste use Qt `QMimeData`, `QUrl`, and clipboard APIs. On macOS, verify Finder local-file URLs, HEIC/HEIF decoder availability, and source-file write access in sandboxed builds.
 
@@ -19,7 +19,7 @@ Image drag/drop and paste use Qt `QMimeData`, `QUrl`, and clipboard APIs. On mac
 - Region and window/control selection freeze the virtual desktop before showing the selector, preserving transient menus that disappear on focus loss.
 - Focused windows and selected top-level windows use DWM extended frame bounds to exclude invisible resize frames; controls inside a window retain their UI Automation bounds.
 - Window/control selection prefers UI Automation with HWND fallback.
-- The snapshot also saves transient windows and UI Automation menu-control bounds from the foreground thread. FastShot then sends `WM_CANCELMODE` to close the live popup; selection prefers the saved controls, so menus in the frozen image remain selectable. The full-screen selector receives and consumes mouse input itself. For ordinary windows it lazily builds and caches a UI Automation target map for the HWND under the pointer, eliminating the input-transparent overlay, off-screen mouse catcher, and global mouse grab.
+- The snapshot also saves transient windows and UI Automation menu-control bounds from the foreground thread. FShot then sends `WM_CANCELMODE` to close the live popup; selection prefers the saved controls, so menus in the frozen image remain selectable. The full-screen selector receives and consumes mouse input itself. For ordinary windows it lazily builds and caches a UI Automation target map for the HWND under the pointer, eliminating the input-transparent overlay, off-screen mouse catcher, and global mouse grab.
 - Real cursor images are converted from Win32 handles best-effort.
 - Tray, editor, clipboard, save, crop, and drawing workflows are implemented.
 
@@ -33,7 +33,7 @@ Image drag/drop and paste use Qt `QMimeData`, `QUrl`, and clipboard APIs. On mac
 - Current `NSCursor` image, hotspot, and position are included best-effort.
 - Shared Qt tray, editor, clipboard, and save workflows are used.
 
-First launch requests Accessibility permission; first capture requests Screen Recording permission. The project currently runs through `uv`/`uvx` and is not packaged as a standalone macOS app, so the entries under **System Settings → Privacy & Security → Accessibility / Screen Recording** usually belong to the app that launched the `uv` command rather than to FastShot. This is commonly Terminal, iTerm2, Warp, or an IDE host. Enable both permissions for the app that actually launches FastShot; after changing them, fully quit and reopen that host app, then run FastShot again. Without Accessibility permission, global shortcuts and control selection may be unavailable, while window hit testing falls back best-effort.
+First launch requests Accessibility permission; first capture requests Screen Recording permission. The project currently runs through `uv`/`uvx` and is not packaged as a standalone macOS app, so the entries under **System Settings → Privacy & Security → Accessibility / Screen Recording** usually belong to the app that launched the `uv` command rather than to FShot. This is commonly Terminal, iTerm2, Warp, or an IDE host. Enable both permissions for the app that actually launches FShot; after changing them, fully quit and reopen that host app, then run FShot again. Without Accessibility permission, global shortcuts and control selection may be unavailable, while window hit testing falls back best-effort.
 
 ### Linux
 
@@ -60,7 +60,7 @@ Linux is not currently a primary target. X11 and Wayland differ substantially in
 - On macOS, custom Ctrl/Shift/Option plus letter combinations trigger the intended capture mode and remain configured after restart.
 - Immediate and delayed capture behave consistently: Windows region and window/control selection freeze the desktop after the countdown, while other modes resolve the target before counting down and capturing the live image.
 - Full-screen, region, focused-window, and selected window/control capture work.
-- After a successful capture, the FastShot editor is restored and requests foreground activation. If the foreground lock rejects the ordinary `SetForegroundWindow` call, a brief topmost/not-topmost Z-order raise is used as a fallback. FastShot checks and reasserts the editor foreground state 200ms after capture completes.
+- After a successful capture, the FShot editor is restored and requests foreground activation. If the foreground lock rejects the ordinary `SetForegroundWindow` call, a brief topmost/not-topmost Z-order raise is used as a fallback. FShot checks and reasserts the editor foreground state 200ms after capture completes.
 - Browser transient URLs/tooltips are not mistaken for the focused window.
 - Escape cancels delayed countdowns and region/window selection.
 - Include Cursor captures the current real pointer.

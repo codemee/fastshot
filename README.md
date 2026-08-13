@@ -1,8 +1,8 @@
-# FastShot
+# FShot
 
 [繁體中文](README.md) | [English](README.en.md)
 
-FastShot 是以 Python 實作的桌面截圖工具，主打全域快捷鍵、系統匣常駐、多頁籤編輯與快速複製/存檔。目前支援 Windows 與 macOS；平台權限與驗收方式請閱讀 [Cross-Platform Notes](docs/cross-platform.md)。
+FShot 是以 Python 實作的桌面截圖工具，主打全域快捷鍵、系統匣常駐、多頁籤編輯與快速複製/存檔。目前支援 Windows 與 macOS；平台權限與驗收方式請閱讀 [Cross-Platform Notes](docs/cross-platform.md)。
 
 ## Current Status
 
@@ -15,7 +15,7 @@ FastShot 是以 Python 實作的桌面截圖工具，主打全域快捷鍵、系
 不需安裝即可使用 `uvx` 執行正式版本：
 
 ```powershell
-uvx --from "fastshot @ git+https://github.com/codemee/fastshot.git@latest" fastshot
+uvx --from "fshot @ git+https://github.com/codemee/fshot.git@latest" fshot
 ```
 
 第一次執行會下載套件並建立 uv 快取環境，後續會重用快取。`latest` 是指向最新正式版的浮動標籤；臨時試用建議使用 `uvx`，若要長期使用則安裝為 uv tool。
@@ -23,27 +23,27 @@ uvx --from "fastshot @ git+https://github.com/codemee/fastshot.git@latest" fasts
 使用 uv 從 GitHub 安裝正式版本：
 
 ```powershell
-uv tool install "fastshot @ git+https://github.com/codemee/fastshot.git@latest"
-fastshot
+uv tool install "fshot @ git+https://github.com/codemee/fshot.git@latest"
+fshot
 ```
 
 更新已安裝的版本：
 
 ```powershell
-uv tool upgrade fastshot
+uv tool upgrade fshot
 ```
 
 若要測試 `main` 的最新開發成果：
 
 ```powershell
-uv tool install --force "fastshot @ git+https://github.com/codemee/fastshot.git@main"
+uv tool install --force "fshot @ git+https://github.com/codemee/fshot.git@main"
 ```
 
 從原始碼啟動開發環境：
 
 ```powershell
 uv sync
-uv run fastshot
+uv run fshot
 ```
 
 程式啟動後會隱藏主視窗並留在系統匣。雙擊系統匣圖示可顯示編輯視窗，右鍵選單可退出。
@@ -62,7 +62,7 @@ uv run fastshot
 - `Ctrl+Shift+F`: 擷取全螢幕
 - `Ctrl+Shift+W`: 選取視窗或控制項後擷取
 
-macOS 使用相同的 `Ctrl+Shift` 字母組合。首次執行時，請依系統提示授予「螢幕錄製」與「輔助使用」權限。目前 FastShot 是透過 `uv`／`uvx` 執行，而非封裝成獨立的 macOS App，因此系統設定中的授權對象通常是啟動指令所在的 App，例如「終端機」、iTerm2 或 IDE。授權後請完全結束並重新開啟該 App，再重新執行 FastShot。
+macOS 使用相同的 `Ctrl+Shift` 字母組合。首次執行時，請依系統提示授予「螢幕錄製」與「輔助使用」權限。目前 FShot 是透過 `uv`／`uvx` 執行，而非封裝成獨立的 macOS App，因此系統設定中的授權對象通常是啟動指令所在的 App，例如「終端機」、iTerm2 或 IDE。授權後請完全結束並重新開啟該 App，再重新執行 FShot。
 
 編輯工具快捷鍵：
 
@@ -94,4 +94,4 @@ uv run pytest -q
 uv run python -m compileall src tests
 ```
 
-若 FastShot 正在執行，`compileall` 有時會因 `__pycache__` 或 executable 被鎖而失敗；先關閉或停止 `fastshot.exe` 後再重跑。
+若 FShot 正在執行，`compileall` 有時會因 `__pycache__` 或 executable 被鎖而失敗；先關閉或停止 `fshot.exe` 後再重跑。

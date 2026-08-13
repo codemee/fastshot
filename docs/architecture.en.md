@@ -2,13 +2,13 @@
 
 [繁體中文](architecture.md) | [English](architecture.en.md)
 
-This document introduces the FastShot codebase. Read [cross-platform.en.md](cross-platform.en.md) before changing capture, hotkey, or platform-specific behavior.
+This document introduces the FShot codebase. Read [cross-platform.en.md](cross-platform.en.md) before changing capture, hotkey, or platform-specific behavior.
 
 ## Entry Points
 
-- `pyproject.toml`: package metadata, dependencies, and the `fastshot` command.
-- `src/fastshot/__main__.py`: entry point for `python -m fastshot`.
-- `src/fastshot/app.py`: Qt application, system tray, global shortcuts, and capture orchestration.
+- `pyproject.toml`: package metadata, dependencies, and the `fshot` command.
+- `src/fshot/__main__.py`: entry point for `python -m fshot`.
+- `src/fshot/app.py`: Qt application, system tray, global shortcuts, and capture orchestration.
 
 ## Main Modules
 

@@ -21,7 +21,7 @@ wheels = [
 ]
 
 [[package]]
-name = "fastshot"
+name = "fshot"
 version = "0.0.7"
 source = { editable = "." }
 dependencies = [

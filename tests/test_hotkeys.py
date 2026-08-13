@@ -1,16 +1,16 @@
 from PySide6.QtCore import QSettings
 from PySide6.QtWidgets import QCheckBox, QComboBox, QLabel, QPushButton
 
-from fastshot.hotkeys import (
+from fshot.hotkeys import (
     HotkeyAction,
     HotkeyCombination,
     HotkeyStore,
     default_hotkeys,
     validate_hotkeys,
 )
-from fastshot.app import HotkeyBridge, WindowsHotkeyFilter
-from fastshot.main_window import EditorWindow
-from fastshot.settings import CaptureMode
+from fshot.app import HotkeyBridge, WindowsHotkeyFilter
+from fshot.main_window import EditorWindow
+from fshot.settings import CaptureMode
 
 
 def test_shift_cannot_be_used_by_itself():

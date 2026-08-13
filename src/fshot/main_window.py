@@ -35,14 +35,14 @@ from PySide6.QtWidgets import (
     QWidgetAction,
 )
 
-from fastshot.canvas import CANVAS_PADDING, ImageCanvas
-from fastshot.document import ShotDocument, make_tab_title
-from fastshot.icons import camera_icon, tool_icon
-from fastshot.hotkeys import HOTKEY_ACTIONS, HotkeyAction, HotkeyCombination, default_hotkeys
-from fastshot.i18n import LanguageManager, LanguageMode
-from fastshot.qt_image import pil_to_qimage
-from fastshot.settings import CaptureMode, CaptureSettings, DrawingSettings, Tool
-from fastshot.theme import ThemeManager, ThemeMode
+from fshot.canvas import CANVAS_PADDING, ImageCanvas
+from fshot.document import ShotDocument, make_tab_title
+from fshot.icons import camera_icon, tool_icon
+from fshot.hotkeys import HOTKEY_ACTIONS, HotkeyAction, HotkeyCombination, default_hotkeys
+from fshot.i18n import LanguageManager, LanguageMode
+from fshot.qt_image import pil_to_qimage
+from fshot.settings import CaptureMode, CaptureSettings, DrawingSettings, Tool
+from fshot.theme import ThemeManager, ThemeMode
 
 IMAGE_SUFFIXES = {
     ".bmp",
@@ -284,7 +284,7 @@ class EditorWindow(QMainWindow):
             with Image.open(path) as image:
                 qimage = pil_to_qimage(image)
         except (OSError, ValueError):
-            QMessageBox.warning(self, "FastShot", self._tr("open_image_failed", path=path))
+            QMessageBox.warning(self, "FShot", self._tr("open_image_failed", path=path))
             return False
         self._add_image(
             qimage,
@@ -379,7 +379,7 @@ class EditorWindow(QMainWindow):
         if self._has_dirty_documents():
             reply = QMessageBox.question(
                 self,
-                "FastShot",
+                "FShot",
                 self._tr("close_discard_all"),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No,
@@ -872,7 +872,7 @@ class EditorWindow(QMainWindow):
             self._finish_tab_rename()
             return
         if not name or name in {".", ".."} or "/" in name or "\\" in name:
-            QMessageBox.warning(self, "FastShot", self._tr("rename_invalid"))
+            QMessageBox.warning(self, "FShot", self._tr("rename_invalid"))
             self._tab_name_editor.setFocus(Qt.FocusReason.OtherFocusReason)
             self._tab_name_editor.selectAll()
             return
@@ -887,14 +887,14 @@ class EditorWindow(QMainWindow):
         except OSError:
             target_is_other_file = target.exists()
         if target_is_other_file:
-            QMessageBox.warning(self, "FastShot", self._tr("rename_exists", name=target.name))
+            QMessageBox.warning(self, "FShot", self._tr("rename_exists", name=target.name))
             self._tab_name_editor.setFocus(Qt.FocusReason.OtherFocusReason)
             self._tab_name_editor.selectAll()
             return
         try:
             source.rename(target)
         except OSError:
-            QMessageBox.warning(self, "FastShot", self._tr("rename_failed", path=source))
+            QMessageBox.warning(self, "FShot", self._tr("rename_failed", path=source))
             self._tab_name_editor.setFocus(Qt.FocusReason.OtherFocusReason)
             self._tab_name_editor.selectAll()
             return
@@ -928,7 +928,7 @@ class EditorWindow(QMainWindow):
         }
         fmt = formats.get(suffix, "PNG")
         if not image.save(str(path), fmt):
-            QMessageBox.warning(self, "FastShot", self._tr("save_failed", path=path))
+            QMessageBox.warning(self, "FShot", self._tr("save_failed", path=path))
             return
         doc.mark_saved(path)
         self.app_settings.setValue(LAST_SAVE_DIRECTORY_KEY, str(path.parent))
@@ -967,7 +967,7 @@ class EditorWindow(QMainWindow):
         if doc and doc.is_dirty:
             reply = QMessageBox.question(
                 self,
-                "FastShot",
+                "FShot",
                 self._tr("close_discard_tab", title=doc.title),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No,
@@ -1103,7 +1103,7 @@ class EditorWindow(QMainWindow):
 
     def _update_title(self) -> None:
         doc = self._current_doc()
-        self.setWindowTitle(f"FastShot-{doc.title}" if doc else "FastShot")
+        self.setWindowTitle(f"FShot-{doc.title}" if doc else "FShot")
 
     def _update_actions(self) -> None:
         has_doc = self._current_doc() is not None

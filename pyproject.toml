@@ -1,5 +1,5 @@
 [project]
-name = "fastshot"
+name = "fshot"
 version = "0.0.7"
 description = "Keyboard-first cross-platform screenshot utility"
 readme = "README.md"
@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.scripts]
-fastshot = "fastshot.app:main"
+fshot = "fshot.app:main"
 
 [dependency-groups]
 dev = [

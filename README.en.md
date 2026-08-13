@@ -1,8 +1,8 @@
-# FastShot
+# FShot
 
 [繁體中文](README.md) | [English](README.en.md)
 
-FastShot is a Python desktop screenshot utility focused on global shortcuts, a persistent system tray, tabbed editing, and fast copy/save workflows. Windows and macOS are currently supported. See [Cross-Platform Notes](docs/cross-platform.en.md) for platform permissions and acceptance guidance.
+FShot is a Python desktop screenshot utility focused on global shortcuts, a persistent system tray, tabbed editing, and fast copy/save workflows. Windows and macOS are currently supported. See [Cross-Platform Notes](docs/cross-platform.en.md) for platform permissions and acceptance guidance.
 
 ## Current Status
 
@@ -15,7 +15,7 @@ FastShot is a Python desktop screenshot utility focused on global shortcuts, a p
 Run the release without installing it:
 
 ```powershell
-uvx --from "fastshot @ git+https://github.com/codemee/fastshot.git@latest" fastshot
+uvx --from "fshot @ git+https://github.com/codemee/fshot.git@latest" fshot
 ```
 
 The first run downloads packages and creates a uv cache environment. Later runs reuse that cache. `latest` is a floating tag that points to the newest stable release. Use `uvx` for evaluation and `uv tool install` for regular use.
@@ -23,35 +23,35 @@ The first run downloads packages and creates a uv cache environment. Later runs 
 Install the release from GitHub:
 
 ```powershell
-uv tool install "fastshot @ git+https://github.com/codemee/fastshot.git@latest"
-fastshot
+uv tool install "fshot @ git+https://github.com/codemee/fshot.git@latest"
+fshot
 ```
 
 Upgrade an installed version:
 
 ```powershell
-uv tool upgrade fastshot
+uv tool upgrade fshot
 ```
 
 Install the latest development version from `main`:
 
 ```powershell
-uv tool install --force "fastshot @ git+https://github.com/codemee/fastshot.git@main"
+uv tool install --force "fshot @ git+https://github.com/codemee/fshot.git@main"
 ```
 
 Run from a source checkout:
 
 ```powershell
 uv sync
-uv run fastshot
+uv run fshot
 ```
 
-FastShot starts with its editor hidden and remains in the system tray. Double-click the tray icon to show the editor; use the tray context menu to exit.
+FShot starts with its editor hidden and remains in the system tray. Double-click the tray icon to show the editor; use the tray context menu to exit.
 
 The theme button cycles through Follow System, Light, and Dark. The language button cycles through Follow System, Traditional Chinese, and English. Both choices are persisted. Toolbar tooltips follow the selected language and include shortcuts where available.
 The keyboard icon opens the global shortcut settings for all four capture modes plus Repeat Previous Capture. Each shortcut can use Ctrl, Shift, Option/Alt, and an A–Z letter; Shift must be combined with Ctrl or Option/Alt. **Use defaults** restores the five default combinations in the panel. Changes are persisted only after OK successfully registers every shortcut; Cancel keeps the active settings unchanged.
 
-Images can also be added by drag-and-drop or clipboard paste. A dropped image opens under its full file name, retains its source path, and is saved back after editing. Pasted images create new unsaved tabs using the screenshot timestamp naming format. After a successful save, FastShot remembers the containing directory and uses it when opening the Save dialog for other unsaved tabs. Paste uses `Ctrl+V` on Windows/Linux and `Command+V` on macOS.
+Images can also be added by drag-and-drop or clipboard paste. A dropped image opens under its full file name, retains its source path, and is saved back after editing. Pasted images create new unsaved tabs using the screenshot timestamp naming format. After a successful save, FShot remembers the containing directory and uses it when opening the Save dialog for other unsaved tabs. Paste uses `Ctrl+V` on Windows/Linux and `Command+V` on macOS.
 
 ## Capture Shortcuts
 
@@ -61,7 +61,7 @@ Images can also be added by drag-and-drop or clipboard paste. A dropped image op
 - `Ctrl+Shift+F`: Capture the full screen
 - `Ctrl+Shift+W`: Select and capture a window or control
 
-macOS uses the same `Ctrl+Shift` letter combinations. On first use, grant Screen Recording and Accessibility permissions when prompted. FastShot currently runs through `uv`/`uvx` rather than as a packaged macOS app, so the permission entry in System Settings usually belongs to the app that launched the command, such as Terminal, iTerm2, or an IDE. After granting access, fully quit and reopen that host app, then run FastShot again.
+macOS uses the same `Ctrl+Shift` letter combinations. On first use, grant Screen Recording and Accessibility permissions when prompted. FShot currently runs through `uv`/`uvx` rather than as a packaged macOS app, so the permission entry in System Settings usually belongs to the app that launched the command, such as Terminal, iTerm2, or an IDE. After granting access, fully quit and reopen that host app, then run FShot again.
 
 Editor shortcuts:
 
@@ -93,4 +93,4 @@ uv run pytest -q
 uv run python -m compileall src tests
 ```
 
-If FastShot is running, `compileall` may occasionally fail because an executable or `__pycache__` file is locked. Stop FastShot and rerun the command.
+If FShot is running, `compileall` may occasionally fail because an executable or `__pycache__` file is locked. Stop FShot and rerun the command.

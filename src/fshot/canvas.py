@@ -6,7 +6,7 @@ from PySide6.QtCore import QPoint, QPointF, QRect, Qt, Signal
 from PySide6.QtGui import QColor, QCursor, QFont, QImage, QMouseEvent, QPainter, QPen, QPolygon, QPixmap
 from PySide6.QtWidgets import QInputDialog, QSizePolicy, QWidget
 
-from fastshot.settings import DrawingSettings, Tool
+from fshot.settings import DrawingSettings, Tool
 
 CANVAS_PADDING = 14
 HANDLE_SIZE = 8

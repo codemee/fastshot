@@ -1,4 +1,4 @@
-from fastshot.platforms.macos import (
+from fshot.platforms.macos import (
     _ax_ancestry_has_any_role,
     _intersect_rects,
     _tuple_rect_contains,

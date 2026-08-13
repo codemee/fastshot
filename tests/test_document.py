@@ -5,7 +5,7 @@ from PIL import Image
 from PySide6.QtCore import QMimeData, QSettings, QUrl
 from PySide6.QtGui import QImage
 
-from fastshot.document import ShotDocument, make_tab_title
+from fshot.document import ShotDocument, make_tab_title
 
 
 def test_make_tab_title_format():
@@ -39,7 +39,7 @@ def test_rename_updates_path_and_title_without_clearing_dirty_state():
 
 
 def test_reindex_after_middle_tab_close(qt_app):
-    from fastshot.main_window import EditorWindow
+    from fshot.main_window import EditorWindow
 
     window = EditorWindow()
     docs = {
@@ -59,7 +59,7 @@ def test_reindex_after_middle_tab_close(qt_app):
 def test_windows_dirty_marker_is_left_of_tab_title(qt_app, monkeypatch):
     from PySide6.QtWidgets import QTabBar
 
-    import fastshot.main_window as main_window
+    import fshot.main_window as main_window
 
     monkeypatch.setattr(main_window.sys, "platform", "win32")
     window = main_window.EditorWindow()
@@ -73,7 +73,7 @@ def test_windows_dirty_marker_is_left_of_tab_title(qt_app, monkeypatch):
 
 
 def test_open_image_uses_supplied_filename_as_tab_title(qt_app, tmp_path):
-    from fastshot.main_window import EditorWindow
+    from fshot.main_window import EditorWindow
 
     path = tmp_path / "sample-image.png"
     Image.new("RGB", (12, 8), "red").save(path)
@@ -87,7 +87,7 @@ def test_open_image_uses_supplied_filename_as_tab_title(qt_app, tmp_path):
 
 
 def test_mime_image_paths_accepts_local_files(tmp_path):
-    from fastshot.main_window import EditorWindow
+    from fshot.main_window import EditorWindow
 
     path = tmp_path / "drop.png"
     Image.new("RGB", (4, 4), "blue").save(path)
@@ -98,7 +98,7 @@ def test_mime_image_paths_accepts_local_files(tmp_path):
 
 
 def test_paste_image_uses_screenshot_title(qt_app):
-    from fastshot.main_window import EditorWindow
+    from fshot.main_window import EditorWindow
 
     qt_app.clipboard().setImage(QImage(6, 5, QImage.Format.Format_ARGB32))
     window = EditorWindow()
@@ -109,7 +109,7 @@ def test_paste_image_uses_screenshot_title(qt_app):
 
 
 def test_unsaved_document_uses_persisted_last_save_directory(qt_app, tmp_path):
-    from fastshot.main_window import LAST_SAVE_DIRECTORY_KEY, EditorWindow
+    from fshot.main_window import LAST_SAVE_DIRECTORY_KEY, EditorWindow
 
     settings_path = tmp_path / "settings.ini"
     save_directory = tmp_path / "screenshots"
@@ -126,7 +126,7 @@ def test_unsaved_document_uses_persisted_last_save_directory(qt_app, tmp_path):
 
 
 def test_document_path_takes_priority_over_last_save_directory(qt_app, tmp_path):
-    from fastshot.main_window import LAST_SAVE_DIRECTORY_KEY, EditorWindow
+    from fshot.main_window import LAST_SAVE_DIRECTORY_KEY, EditorWindow
 
     settings = QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat)
     settings.setValue(LAST_SAVE_DIRECTORY_KEY, str(tmp_path / "recent"))
@@ -142,7 +142,7 @@ def test_document_path_takes_priority_over_last_save_directory(qt_app, tmp_path)
 def test_missing_last_save_directory_falls_back_to_working_directory(
     qt_app, tmp_path, monkeypatch
 ):
-    from fastshot.main_window import LAST_SAVE_DIRECTORY_KEY, EditorWindow
+    from fshot.main_window import LAST_SAVE_DIRECTORY_KEY, EditorWindow
 
     settings = QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat)
     settings.setValue(LAST_SAVE_DIRECTORY_KEY, str(tmp_path / "missing"))
@@ -153,7 +153,7 @@ def test_missing_last_save_directory_falls_back_to_working_directory(
 
 
 def test_successful_save_updates_last_save_directory(qt_app, tmp_path):
-    from fastshot.main_window import LAST_SAVE_DIRECTORY_KEY, EditorWindow
+    from fshot.main_window import LAST_SAVE_DIRECTORY_KEY, EditorWindow
 
     settings_path = tmp_path / "settings.ini"
     settings = QSettings(str(settings_path), QSettings.Format.IniFormat)
@@ -172,7 +172,7 @@ def test_successful_save_updates_last_save_directory(qt_app, tmp_path):
 
 
 def test_failed_save_does_not_replace_last_save_directory(qt_app, tmp_path, monkeypatch):
-    import fastshot.main_window as main_window
+    import fshot.main_window as main_window
 
     previous_directory = tmp_path / "previous"
     previous_directory.mkdir()
@@ -189,7 +189,7 @@ def test_failed_save_does_not_replace_last_save_directory(qt_app, tmp_path, monk
 
 
 def test_cancelled_save_does_not_replace_last_save_directory(qt_app, tmp_path, monkeypatch):
-    import fastshot.main_window as main_window
+    import fshot.main_window as main_window
 
     previous_directory = tmp_path / "previous"
     previous_directory.mkdir()
