@@ -1,8 +1,8 @@
 # FShot
 
-[繁體中文](README.md) | [English](README.en.md)
+[繁體中文](https://github.com/codemee/fshot/blob/main/README.md) | [English](https://github.com/codemee/fshot/blob/main/README.en.md)
 
-FShot 是以 Python 實作的桌面截圖工具，主打全域快捷鍵、系統匣常駐、多頁籤編輯與快速複製/存檔。目前支援 Windows 與 macOS；平台權限與驗收方式請閱讀 [Cross-Platform Notes](docs/cross-platform.md)。
+FShot 是以 Python 實作的桌面截圖工具，主打全域快捷鍵、系統匣常駐、多頁籤編輯與快速複製/存檔。目前支援 Windows 與 macOS；平台權限與驗收方式請閱讀 [Cross-Platform Notes](https://github.com/codemee/fshot/blob/main/docs/cross-platform.md)。
 
 ## Current Status
 
@@ -12,28 +12,28 @@ FShot 是以 Python 實作的桌面截圖工具，主打全域快捷鍵、系統
 
 ## Quick Start
 
-不需安裝即可使用 `uvx` 執行正式版本：
+FShot 可從 [PyPI](https://pypi.org/project/fshot/) 安裝。不需安裝即可使用 `uvx` 執行最新正式版本：
 
 ```powershell
-uvx --from "fshot @ git+https://github.com/codemee/fshot.git@latest" fshot
+uvx fshot
 ```
 
-第一次執行會下載套件並建立 uv 快取環境，後續會重用快取。`latest` 是指向最新正式版的浮動標籤；臨時試用建議使用 `uvx`，若要長期使用則安裝為 uv tool。
+第一次執行會從 PyPI 下載套件並建立 uv 快取環境，後續會重用快取。臨時試用建議使用 `uvx`，若要長期使用則安裝為 uv tool。
 
-使用 uv 從 GitHub 安裝正式版本：
+使用 uv 從 PyPI 安裝：
 
 ```powershell
-uv tool install "fshot @ git+https://github.com/codemee/fshot.git@latest"
+uv tool install fshot
 fshot
 ```
 
-更新已安裝的版本：
+安裝後可直接執行 `fshot`；更新至 PyPI 最新版本：
 
 ```powershell
 uv tool upgrade fshot
 ```
 
-若要測試 `main` 的最新開發成果：
+若要直接從 GitHub 測試 `main` 的最新開發成果：
 
 ```powershell
 uv tool install --force "fshot @ git+https://github.com/codemee/fshot.git@main"
@@ -82,9 +82,9 @@ macOS 使用相同的 `Ctrl+Shift` 字母組合。首次執行時，請依系統
 
 ## Project Docs
 
-- [PRD](PRD.md): 原始產品需求。
-- [Architecture](docs/architecture.md): 專案結構、主要模組與資料流。
-- [Cross-Platform Notes](docs/cross-platform.md): Windows/macOS/Linux 差異與 macOS 後續實作重點。
+- [PRD](https://github.com/codemee/fshot/blob/main/PRD.md): 原始產品需求。
+- [Architecture](https://github.com/codemee/fshot/blob/main/docs/architecture.md): 專案結構、主要模組與資料流。
+- [Cross-Platform Notes](https://github.com/codemee/fshot/blob/main/docs/cross-platform.md): Windows/macOS/Linux 差異與 macOS 後續實作重點。
 
 ## Development
 
