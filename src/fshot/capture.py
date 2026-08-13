@@ -14,8 +14,8 @@ from PySide6.QtCore import QPoint, QRect, QSize, Qt
 from PySide6.QtGui import QColor, QCursor, QFont, QGuiApplication, QMouseEvent, QPainter, QPen
 from PySide6.QtWidgets import QApplication, QWidget
 
-from fastshot.qt_image import pil_to_qimage
-from fastshot.settings import CaptureMode, CaptureSettings
+from fshot.qt_image import pil_to_qimage
+from fshot.settings import CaptureMode, CaptureSettings
 
 if sys.platform == "win32":
     from ctypes import windll
@@ -385,7 +385,7 @@ class WindowSelector(QWidget):
         self, point: QPoint, use_uia: bool, temporary: bool = False
     ) -> WindowCaptureTarget | None:
         if sys.platform == "darwin":
-            from fastshot.platforms.macos import capture_target_at_point, capture_target_bounds
+            from fshot.platforms.macos import capture_target_at_point, capture_target_bounds
 
             selected = capture_target_at_point(point.x(), point.y())
             if selected is None:
@@ -495,11 +495,11 @@ class CaptureService:
         frozen_selection: _FrozenDesktop | None = None,
     ) -> Image.Image | None:
         if sys.platform == "darwin":
-            from fastshot.platforms.macos import screen_recording_allowed
+            from fshot.platforms.macos import screen_recording_allowed
 
             if not screen_recording_allowed(request=True):
                 raise PermissionError(
-                    "Screen Recording permission is required. Enable FastShot (or its terminal) "
+                    "Screen Recording permission is required. Enable FShot (or its terminal) "
                     "in System Settings > Privacy & Security > Screen Recording."
                 )
         frozen_modes = {CaptureMode.REGION, CaptureMode.WINDOW_UNDER_CURSOR}
@@ -631,7 +631,7 @@ class CaptureService:
 
     def _active_window_rect(self) -> CaptureRect | None:
         if sys.platform == "darwin":
-            from fastshot.platforms.macos import active_window_bounds
+            from fshot.platforms.macos import active_window_bounds
 
             bounds = active_window_bounds()
             return CaptureRect(*bounds) if bounds else None
@@ -659,7 +659,7 @@ class CaptureService:
 
     def _draw_cursor(self, image: Image.Image, rect: CaptureRect) -> None:
         if sys.platform == "darwin":
-            from fastshot.platforms.macos import current_cursor_image
+            from fshot.platforms.macos import current_cursor_image
 
             try:
                 cursor = current_cursor_image()

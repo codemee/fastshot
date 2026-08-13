@@ -1,6 +1,6 @@
 from PySide6.QtCore import QSettings
 
-from fastshot.theme import ThemeManager, ThemeMode
+from fshot.theme import ThemeManager, ThemeMode
 
 
 def test_theme_defaults_to_system(qt_app, tmp_path):
@@ -36,7 +36,7 @@ def test_invalid_stored_theme_falls_back_to_system(qt_app, tmp_path):
 
 
 def test_explicit_theme_cycles_in_expected_order(qt_app, tmp_path):
-    from fastshot.main_window import EditorWindow
+    from fshot.main_window import EditorWindow
 
     settings = QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat)
     manager = ThemeManager(qt_app, settings)
@@ -51,7 +51,7 @@ def test_explicit_theme_cycles_in_expected_order(qt_app, tmp_path):
 
 
 def test_arrow_spinbox_buttons_change_value(qt_app):
-    from fastshot.main_window import ArrowSpinBox
+    from fshot.main_window import ArrowSpinBox
 
     spinbox = ArrowSpinBox()
     spinbox.setRange(0, 10)

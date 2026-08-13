@@ -1,4 +1,4 @@
-from fastshot.icons import camera_icon, tray_icon
+from fshot.icons import camera_icon, tray_icon
 
 
 def _opaque_bounds(icon, size):

@@ -2,18 +2,18 @@
 
 [繁體中文](architecture.md) | [English](architecture.en.md)
 
-本文是給初次接觸 FastShot 專案的導覽。若要做 macOS 跨平台實作，請同時閱讀 [cross-platform.md](cross-platform.md)。
+本文是給初次接觸 FShot 專案的導覽。若要做 macOS 跨平台實作，請同時閱讀 [cross-platform.md](cross-platform.md)。
 
 ## Entry Points
 
-- `pyproject.toml`: 專案 metadata、依賴與 `fastshot` command。
-- `src/fastshot/__main__.py`: `python -m fastshot` 入口。
-- `src/fastshot/app.py`: Qt application、系統匣、全域快捷鍵與截圖流程 orchestration。
+- `pyproject.toml`: 專案 metadata、依賴與 `fshot` command。
+- `src/fshot/__main__.py`: `python -m fshot` 入口。
+- `src/fshot/app.py`: Qt application、系統匣、全域快捷鍵與截圖流程 orchestration。
 
 ## Main Modules
 
 - `app.py`
-  - 建立 `QApplication`、`FastShotApplication`、系統匣圖示。
+  - 建立 `QApplication`、`FShotApplication`、系統匣圖示。
   - Windows 使用 `RegisterHotKey` 接收全域快捷鍵，避免快捷鍵送到焦點視窗。
   - 收到快捷鍵後隱藏編輯視窗，呼叫 `CaptureService`，截圖完成後加入編輯頁籤並複製到剪貼簿。
 

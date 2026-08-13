@@ -5,7 +5,7 @@ from enum import Enum
 
 from PySide6.QtCore import QSettings
 
-from fastshot.settings import CaptureMode
+from fshot.settings import CaptureMode
 
 
 CAPTURE_MODES = (

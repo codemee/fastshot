@@ -2,8 +2,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QImage, QKeySequence
 from PySide6.QtWidgets import QScrollArea, QWidget
 
-from fastshot.canvas import CANVAS_PADDING
-from fastshot.main_window import _align_scrollbars_to_image
+from fshot.canvas import CANVAS_PADDING
+from fshot.main_window import _align_scrollbars_to_image
 
 
 def test_image_scrollbars_exclude_canvas_padding(qt_app):
@@ -29,7 +29,7 @@ def test_image_scrollbars_exclude_canvas_padding(qt_app):
 
 
 def test_saved_tab_can_rename_file_inline(qt_app, tmp_path):
-    from fastshot.main_window import EditorWindow
+    from fshot.main_window import EditorWindow
 
     source = tmp_path / "old-name.png"
     source.write_bytes(b"image")
@@ -52,7 +52,7 @@ def test_saved_tab_can_rename_file_inline(qt_app, tmp_path):
 
 
 def test_unsaved_tab_cannot_be_renamed(qt_app):
-    from fastshot.main_window import EditorWindow
+    from fshot.main_window import EditorWindow
 
     window = EditorWindow()
     window._add_image(QImage(6, 5, QImage.Format.Format_ARGB32), "new-shot")
@@ -65,7 +65,7 @@ def test_unsaved_tab_cannot_be_renamed(qt_app):
 def test_rename_preserves_dirty_state_and_does_not_replace_existing_file(
     qt_app, tmp_path, monkeypatch
 ):
-    import fastshot.main_window as main_window
+    import fshot.main_window as main_window
 
     source = tmp_path / "old.png"
     existing = tmp_path / "existing.png"
@@ -90,7 +90,7 @@ def test_rename_preserves_dirty_state_and_does_not_replace_existing_file(
 
 
 def test_rename_shortcut_matches_platform_file_manager(qt_app, monkeypatch):
-    import fastshot.main_window as main_window
+    import fshot.main_window as main_window
 
     monkeypatch.setattr(main_window.sys, "platform", "darwin")
     mac_window = main_window.EditorWindow()

@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from fastshot.app import _activate_window
+from fshot.app import _activate_window
 
 
 def test_activate_window_uses_native_foreground_calls_on_windows(qt_app, monkeypatch):
@@ -21,9 +21,9 @@ def test_activate_window_uses_native_foreground_calls_on_windows(qt_app, monkeyp
         ),
         GetForegroundWindow=lambda: foreground[0],
     )
-    monkeypatch.setattr("fastshot.app.sys.platform", "win32")
-    monkeypatch.setattr("fastshot.app.win32gui", gui)
-    monkeypatch.setattr("fastshot.app.win32con", SimpleNamespace(SW_RESTORE=9))
+    monkeypatch.setattr("fshot.app.sys.platform", "win32")
+    monkeypatch.setattr("fshot.app.win32gui", gui)
+    monkeypatch.setattr("fshot.app.win32con", SimpleNamespace(SW_RESTORE=9))
 
     _activate_window(window)
 
@@ -47,9 +47,9 @@ def test_activate_window_raises_z_order_when_initial_request_is_denied(qt_app, m
         activateWindow=lambda: None,
         winId=lambda: 123,
     )
-    monkeypatch.setattr("fastshot.app.sys.platform", "win32")
+    monkeypatch.setattr("fshot.app.sys.platform", "win32")
     monkeypatch.setattr(
-        "fastshot.app.win32gui",
+        "fshot.app.win32gui",
         SimpleNamespace(
             ShowWindow=lambda *_args: None,
             BringWindowToTop=lambda _hwnd: None,
@@ -59,7 +59,7 @@ def test_activate_window_raises_z_order_when_initial_request_is_denied(qt_app, m
         ),
     )
     monkeypatch.setattr(
-        "fastshot.app.win32con",
+        "fshot.app.win32con",
         SimpleNamespace(
             SW_RESTORE=9,
             SWP_NOMOVE=1,

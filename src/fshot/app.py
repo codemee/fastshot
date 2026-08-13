@@ -9,13 +9,13 @@ from PySide6.QtCore import QAbstractNativeEventFilter, QObject, QTimer, Signal
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon
 
-from fastshot.capture import CaptureService
-from fastshot.icons import tray_icon
-from fastshot.hotkeys import HotkeyAction, HotkeyCombination, HotkeyStore, validate_hotkeys
-from fastshot.i18n import LanguageManager
-from fastshot.main_window import EditorWindow
-from fastshot.settings import CaptureMode
-from fastshot.theme import ThemeManager
+from fshot.capture import CaptureService
+from fshot.icons import tray_icon
+from fshot.hotkeys import HotkeyAction, HotkeyCombination, HotkeyStore, validate_hotkeys
+from fshot.i18n import LanguageManager
+from fshot.main_window import EditorWindow
+from fshot.settings import CaptureMode
+from fshot.theme import ThemeManager
 
 if sys.platform == "win32":
     import win32con
@@ -123,12 +123,12 @@ class WindowsHotkeyFilter(QAbstractNativeEventFilter):
         )
 
 
-class FastShotApplication(QObject):
+class FShotApplication(QObject):
     def __init__(self, app: QApplication) -> None:
         super().__init__()
         self.app = app
-        self.app.setApplicationName("FastShot")
-        self.app.setOrganizationName("FastShot")
+        self.app.setApplicationName("FShot")
+        self.app.setOrganizationName("FShot")
         self.app.setQuitOnLastWindowClosed(False)
         self.theme_manager = ThemeManager(self.app)
         self.language_manager = LanguageManager()
@@ -189,7 +189,7 @@ class FastShotApplication(QObject):
                 traceback.print_exc()
                 QMessageBox.warning(
                     self.window,
-                    "FastShot",
+                    "FShot",
                     self.language_manager.text("capture_failed", error=exc),
                 )
                 self._capture_in_progress = False
@@ -203,7 +203,7 @@ class FastShotApplication(QObject):
                 traceback.print_exc()
                 QMessageBox.warning(
                     self.window,
-                    "FastShot",
+                    "FShot",
                     self.language_manager.text("capture_failed", error=exc),
                 )
                 self._capture_in_progress = False
@@ -224,7 +224,7 @@ class FastShotApplication(QObject):
 
     def _build_tray(self) -> QSystemTrayIcon:
         tray = QSystemTrayIcon(tray_icon(macos=sys.platform == "darwin"), self.app)
-        tray.setToolTip("FastShot")
+        tray.setToolTip("FShot")
         menu = QMenu()
         self.exit_action = QAction(self.language_manager.text("exit"), menu)
         self.exit_action.triggered.connect(self.quit)
@@ -251,12 +251,12 @@ class FastShotApplication(QObject):
             except Exception as exc:
                 self._native_hotkey_filter = None
                 if show_warning:
-                    QMessageBox.warning(self.window, "FastShot", f"Native global hotkeys unavailable: {exc}")
+                    QMessageBox.warning(self.window, "FShot", f"Native global hotkeys unavailable: {exc}")
                 return False
 
         if sys.platform == "darwin":
             try:
-                from fastshot.platforms.macos import MacHotkeyListener, accessibility_allowed
+                from fshot.platforms.macos import MacHotkeyListener, accessibility_allowed
 
                 accessibility_allowed(request=True)
                 actions = {combination: action for action, combination in bindings.items()}
@@ -276,14 +276,14 @@ class FastShotApplication(QObject):
                 return True
             except Exception as exc:
                 if show_warning:
-                    QMessageBox.warning(self.window, "FastShot", f"macOS global hotkeys unavailable: {exc}")
+                    QMessageBox.warning(self.window, "FShot", f"macOS global hotkeys unavailable: {exc}")
                 return False
 
         try:
             import keyboard
         except Exception as exc:  # pragma: no cover - optional dependency guard
             if show_warning:
-                QMessageBox.warning(self.window, "FastShot", f"Global hotkeys unavailable: {exc}")
+                QMessageBox.warning(self.window, "FShot", f"Global hotkeys unavailable: {exc}")
             return False
 
         for action, combination in bindings.items():
@@ -298,7 +298,7 @@ class FastShotApplication(QObject):
             except Exception as exc:
                 self._unregister_hotkeys()
                 if show_warning:
-                    QMessageBox.warning(self.window, "FastShot", f"Could not register {shortcut}: {exc}")
+                    QMessageBox.warning(self.window, "FShot", f"Could not register {shortcut}: {exc}")
                 return False
         return True
 
@@ -368,5 +368,5 @@ class FastShotApplication(QObject):
 
 def main() -> int:
     app = QApplication(sys.argv)
-    controller = FastShotApplication(app)
+    controller = FShotApplication(app)
     return controller.run()

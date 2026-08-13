@@ -319,7 +319,7 @@ class MacHotkeyListener:
     def start(self) -> None:
         if self._thread is not None:
             return
-        self._thread = threading.Thread(target=self._run, name="FastShotHotkeys", daemon=True)
+        self._thread = threading.Thread(target=self._run, name="FShotHotkeys", daemon=True)
         self._thread.start()
 
     def stop(self) -> None:

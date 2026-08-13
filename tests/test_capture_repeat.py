@@ -4,7 +4,7 @@ from PIL import Image
 from PySide6.QtCore import QPoint, QPointF, Qt
 from PySide6.QtGui import QMouseEvent
 
-from fastshot.capture import (
+from fshot.capture import (
     CaptureRect,
     CaptureService,
     RegionSelector,
@@ -14,7 +14,7 @@ from fastshot.capture import (
     _cancel_windows_menu_mode,
     _uia_target_at_point,
 )
-from fastshot.settings import CaptureMode, CaptureSettings
+from fshot.settings import CaptureMode, CaptureSettings
 
 
 def _image() -> Image.Image:
@@ -22,7 +22,7 @@ def _image() -> Image.Image:
 
 
 def test_repeat_region_reuses_the_previous_coordinates(monkeypatch):
-    monkeypatch.setattr("fastshot.capture.sys.platform", "win32")
+    monkeypatch.setattr("fshot.capture.sys.platform", "win32")
     service = CaptureService()
     selected = CaptureRect(12, 34, 200, 100)
     desktop = _FrozenDesktop(CaptureRect(0, 0, 400, 300), Image.new("RGB", (400, 300), "red"))
@@ -48,7 +48,7 @@ def test_repeat_region_reuses_the_previous_coordinates(monkeypatch):
 
 
 def test_repeat_selected_window_tracks_it_and_silently_stops_after_it_disappears(monkeypatch):
-    monkeypatch.setattr("fastshot.capture.sys.platform", "win32")
+    monkeypatch.setattr("fshot.capture.sys.platform", "win32")
     service = CaptureService()
     original = CaptureRect(10, 20, 300, 200)
     moved = CaptureRect(100, 120, 300, 200)
@@ -114,7 +114,7 @@ def test_freeze_desktop_counts_down_before_capture_and_uses_freeze_time_cursor(m
 
 
 def test_delayed_region_cancel_stops_before_freeze_and_selection(monkeypatch):
-    monkeypatch.setattr("fastshot.capture.sys.platform", "win32")
+    monkeypatch.setattr("fshot.capture.sys.platform", "win32")
     service = CaptureService()
     monkeypatch.setattr(service, "_countdown", lambda _seconds: True)
     monkeypatch.setattr(
@@ -136,7 +136,7 @@ def test_delayed_region_cancel_stops_before_freeze_and_selection(monkeypatch):
 
 def test_region_selector_poll_cancels_without_keyboard_focus(qt_app, monkeypatch):
     selector = RegionSelector()
-    monkeypatch.setattr("fastshot.capture._escape_pressed", lambda: True)
+    monkeypatch.setattr("fshot.capture._escape_pressed", lambda: True)
 
     selector.poll()
 
@@ -176,7 +176,7 @@ def test_window_selector_prefers_frozen_transient_target(qt_app, monkeypatch):
     menu = WindowCaptureTarget(CaptureRect(10, 10, 80, 100), lambda: None)
     item = WindowCaptureTarget(CaptureRect(10, 30, 80, 20), lambda: None)
     selector = WindowSelector(Image.new("RGB", (2, 2)), (menu, item))
-    monkeypatch.setattr("fastshot.capture.sys.platform", "win32")
+    monkeypatch.setattr("fshot.capture.sys.platform", "win32")
 
     selected = selector._target_at_point(QPoint(20, 35), use_uia=True)
 
@@ -194,12 +194,12 @@ def test_uia_top_level_window_uses_native_dwm_target(monkeypatch):
         CurrentNativeWindowHandle=123,
     )
     automation = SimpleNamespace(ElementFromPoint=lambda _point: element)
-    monkeypatch.setattr("fastshot.capture.sys.platform", "win32")
+    monkeypatch.setattr("fshot.capture.sys.platform", "win32")
     monkeypatch.setattr(
-        "fastshot.capture._uia_automation", lambda: (automation, lambda x, y: (x, y))
+        "fshot.capture._uia_automation", lambda: (automation, lambda x, y: (x, y))
     )
     monkeypatch.setattr(
-        "fastshot.capture._window_target_from_hwnd",
+        "fshot.capture._window_target_from_hwnd",
         lambda hwnd: native if hwnd == 123 else None,
     )
 
@@ -214,20 +214,20 @@ def test_windows_menu_mode_is_cancelled_for_menu_owner_and_foreground(monkeypatc
         pointer._obj.hwndActive = 111
         return True
 
-    monkeypatch.setattr("fastshot.capture.sys.platform", "win32")
+    monkeypatch.setattr("fshot.capture.sys.platform", "win32")
     monkeypatch.setattr(
-        "fastshot.capture.win32gui",
+        "fshot.capture.win32gui",
         SimpleNamespace(
             GetForegroundWindow=lambda: 111,
             SendMessageTimeout=lambda *args: sent.append(args),
         ),
     )
     monkeypatch.setattr(
-        "fastshot.capture.win32process",
+        "fshot.capture.win32process",
         SimpleNamespace(GetWindowThreadProcessId=lambda _hwnd: (12, 34)),
     )
     monkeypatch.setattr(
-        "fastshot.capture.windll",
+        "fshot.capture.windll",
         SimpleNamespace(user32=SimpleNamespace(GetGUIThreadInfo=get_gui_thread_info)),
     )
 
@@ -237,13 +237,13 @@ def test_windows_menu_mode_is_cancelled_for_menu_owner_and_foreground(monkeypatc
 
 
 def test_zero_delay_interactive_selection_can_freeze_before_hotkey_returns(monkeypatch):
-    monkeypatch.setattr("fastshot.capture.sys.platform", "win32")
+    monkeypatch.setattr("fshot.capture.sys.platform", "win32")
     service = CaptureService()
     frozen = _FrozenDesktop(CaptureRect(0, 0, 1, 1), _image())
     menu_target = WindowCaptureTarget(CaptureRect(0, 0, 1, 1), lambda: None)
     monkeypatch.setattr(service, "_freeze_desktop", lambda _settings: frozen)
     monkeypatch.setattr(
-        "fastshot.capture._snapshot_windows_transient_targets", lambda: (menu_target,)
+        "fshot.capture._snapshot_windows_transient_targets", lambda: (menu_target,)
     )
 
     prepared = service.prepare_frozen_selection(CaptureMode.REGION, CaptureSettings())
@@ -266,7 +266,7 @@ def test_zero_delay_interactive_selection_can_freeze_before_hotkey_returns(monke
 def test_macos_zero_delay_interactive_selection_freezes_before_selector_takes_focus(
     monkeypatch,
 ):
-    monkeypatch.setattr("fastshot.capture.sys.platform", "darwin")
+    monkeypatch.setattr("fshot.capture.sys.platform", "darwin")
     service = CaptureService()
     frozen = _FrozenDesktop(CaptureRect(0, 0, 1, 1), _image())
     monkeypatch.setattr(service, "_freeze_desktop", lambda _settings: frozen)

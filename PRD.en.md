@@ -1,8 +1,8 @@
-# Simple Screenshot Utility: FastShot
+# Simple Screenshot Utility: FShot
 
 [繁體中文](PRD.md) | [English](PRD.en.md)
 
-FastShot is a keyboard-first, cross-platform screenshot utility implemented in Python. Its command name is `fastshot`.
+FShot is a keyboard-first, cross-platform screenshot utility implemented in Python. Its command name is `fshot`.
 
 ## User Interface
 
@@ -30,7 +30,7 @@ On macOS, replace Alt with Option:
 ## Editor Window
 
 - Use a modern, flat, tabbed interface.
-- Show `FastShot-<current tab title>` in the window title, or `FastShot` when no tabs exist.
+- Show `FShot-<current tab title>` in the window title, or `FShot` when no tabs exist.
 - When tabs overflow, provide a menu at the right side of the tab bar. Selecting an edge tab should scroll neighboring tabs into view.
 - Hiding/minimizing the editor leaves the application available from the system tray.
 - Place an icon-only toolbar above the tabs with these tools:
@@ -50,4 +50,4 @@ On macOS, replace Alt with Option:
 
 ## Notes
 
-- Capture shortcuts must be consumed and must not be forwarded to the focused application, where they could cause unintended input or close FastShot's own preview.
+- Capture shortcuts must be consumed and must not be forwarded to the focused application, where they could cause unintended input or close FShot's own preview.

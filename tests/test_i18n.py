@@ -1,7 +1,7 @@
 from PySide6.QtCore import QLocale, QSettings
 from PySide6.QtGui import QKeySequence
 
-from fastshot.i18n import LanguageManager, LanguageMode, _is_traditional_chinese
+from fshot.i18n import LanguageManager, LanguageMode, _is_traditional_chinese
 
 
 def test_language_defaults_to_system_and_uses_traditional_chinese(tmp_path):
@@ -44,7 +44,7 @@ def test_language_selection_is_persisted(tmp_path):
 
 
 def test_language_cycles_in_expected_order(qt_app, tmp_path):
-    from fastshot.main_window import EditorWindow
+    from fshot.main_window import EditorWindow
 
     settings = QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat)
     manager = LanguageManager(settings, QLocale("en_US"))
@@ -59,7 +59,7 @@ def test_language_cycles_in_expected_order(qt_app, tmp_path):
 
 
 def test_language_change_retranslates_toolbar(qt_app, tmp_path):
-    from fastshot.main_window import EditorWindow
+    from fshot.main_window import EditorWindow
 
     settings = QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat)
     manager = LanguageManager(settings, QLocale("en_US"))
@@ -73,7 +73,7 @@ def test_language_change_retranslates_toolbar(qt_app, tmp_path):
 
 
 def test_toolbar_tooltips_include_shortcuts(qt_app, tmp_path):
-    from fastshot.main_window import EditorWindow
+    from fshot.main_window import EditorWindow
 
     settings = QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat)
     manager = LanguageManager(settings, QLocale("en_US"))

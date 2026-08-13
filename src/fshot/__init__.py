@@ -1,4 +1,4 @@
-"""FastShot screenshot utility."""
+"""FShot screenshot utility."""
 
 __all__ = ["__version__"]
 
