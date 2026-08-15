@@ -30,6 +30,7 @@
 
 - `main_window.py`
   - 編輯主視窗、toolbar、多頁籤、存檔/另存、縮放、設定面板。
+  - 視窗標題會從已安裝套件 metadata 顯示目前版本，並在有文件時附加目前頁籤名稱。
   - 工具列使用 20px 圖示與 34px 固定按鈕，讓各平台的工具列維持緊湊且一致的點擊區域。
   - 每個截圖頁籤持有一個 `ImageCanvas`。
   - 已存檔頁籤可用 Windows/Linux `F2` 或 macOS `Return`，以及雙擊標籤名稱，直接在頁籤內重新命名原始檔案；重新命名保留影像副檔名。
@@ -100,6 +101,7 @@
 - `tests/test_document.py`: tab title、dirty/save 狀態、文件 reindex。
 - `tests/test_icons.py`: 工作列與系統匣圖示在原生槽位尺寸中的不透明圖案占比，以及工具圖示的視覺置中。
 - `tests/test_main_window.py`: 工具列按鈕尺寸、圖片捲軸排除 Canvas padding 的幾何與補白元件。
+- `tests/test_version.py`: 執行時版本與已安裝套件 metadata 保持一致。
 - 以 `uv run pytest -q` 與 `uv run python -m compileall src tests` 執行跨平台檢查。
 
 重要的 GUI/OS 行為仍需手動驗收，尤其是全域快捷鍵、視窗選取、游標擷取與剪貼簿。

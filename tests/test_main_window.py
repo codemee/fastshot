@@ -2,8 +2,21 @@ from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QImage, QKeySequence
 from PySide6.QtWidgets import QScrollArea, QToolBar, QToolButton, QWidget
 
+from fshot import __version__
 from fshot.canvas import CANVAS_PADDING
 from fshot.main_window import _align_scrollbars_to_image
+
+
+def test_editor_window_title_includes_installed_version(qt_app):
+    from fshot.main_window import EditorWindow
+
+    window = EditorWindow()
+
+    assert window.windowTitle() == f"FShot {__version__}"
+
+    window._add_image(QImage(6, 5, QImage.Format.Format_ARGB32), "example.png")
+
+    assert window.windowTitle() == f"FShot {__version__} - example.png"
 
 
 def test_editor_toolbar_uses_compact_buttons(qt_app):

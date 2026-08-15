@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
     QWidgetAction,
 )
 
+from fshot import __version__
 from fshot.canvas import CANVAS_PADDING, ImageCanvas
 from fshot.document import ShotDocument, make_tab_title
 from fshot.icons import camera_icon, tool_icon
@@ -1110,7 +1111,8 @@ class EditorWindow(QMainWindow):
 
     def _update_title(self) -> None:
         doc = self._current_doc()
-        self.setWindowTitle(f"FShot-{doc.title}" if doc else "FShot")
+        app_title = f"FShot {__version__}"
+        self.setWindowTitle(f"{app_title} - {doc.title}" if doc else app_title)
 
     def _update_actions(self) -> None:
         has_doc = self._current_doc() is not None
