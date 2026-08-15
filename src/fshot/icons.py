@@ -84,6 +84,10 @@ def tool_icon(
     painter.setBrush(Qt.BrushStyle.NoBrush)
 
     if name == "pen":
+        # The pencil artwork extends farther toward the lower-left than the
+        # other toolbar glyphs, so align its visual center with its peers.
+        painter.save()
+        painter.translate(0, -4)
         painter.setPen(QPen(base_ink, 1.2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawPolygon(QPolygon([QPoint(8, 24), QPoint(12, 28), QPoint(25, 15), QPoint(21, 11)]))
@@ -92,6 +96,7 @@ def tool_icon(
         painter.drawPolygon(QPolygon([QPoint(8, 24), QPoint(12, 28), QPoint(6, 30)]))
         painter.drawLine(10, 25, 18, 17)
         painter.drawEllipse(12, 23, 2, 2)
+        painter.restore()
     elif name == "line":
         painter.drawLine(7, 24, 25, 8)
     elif name == "arrow":

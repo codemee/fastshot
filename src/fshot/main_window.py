@@ -58,6 +58,8 @@ IMAGE_SUFFIXES = {
 }
 
 LAST_SAVE_DIRECTORY_KEY = "files/last_save_directory"
+TOOLBAR_ICON_SIZE = QSize(20, 20)
+TOOLBAR_BUTTON_SIZE = QSize(34, 34)
 
 
 def _align_scrollbars_to_image(area: QScrollArea) -> None:
@@ -403,9 +405,10 @@ class EditorWindow(QMainWindow):
 
     def _build_toolbar(self) -> None:
         toolbar = QToolBar("Tools")
+        toolbar.setObjectName("editorToolbar")
         toolbar.setMovable(False)
         toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
-        toolbar.setIconSize(toolbar.iconSize() * 1.25)
+        toolbar.setIconSize(TOOLBAR_ICON_SIZE)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, toolbar)
         self.tool_group = QActionGroup(self)
         self.tool_group.setExclusive(True)
@@ -501,6 +504,10 @@ class EditorWindow(QMainWindow):
         self.language_action = QAction(tool_icon("language", badge="system"), "Language", self)
         self.language_action.triggered.connect(self._cycle_language)
         toolbar.addAction(self.language_action)
+        for action in toolbar.actions():
+            button = toolbar.widgetForAction(action)
+            if isinstance(button, QToolButton):
+                button.setFixedSize(TOOLBAR_BUTTON_SIZE)
         self._refresh_toolbar_icons()
 
     def _tool_action(self, text: str, shortcut: str, tool: Tool, icon_name: str) -> QAction:

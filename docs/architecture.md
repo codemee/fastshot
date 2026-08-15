@@ -30,6 +30,7 @@
 
 - `main_window.py`
   - 編輯主視窗、toolbar、多頁籤、存檔/另存、縮放、設定面板。
+  - 工具列使用 20px 圖示與 34px 固定按鈕，讓各平台的工具列維持緊湊且一致的點擊區域。
   - 每個截圖頁籤持有一個 `ImageCanvas`。
   - 已存檔頁籤可用 Windows/Linux `F2` 或 macOS `Return`，以及雙擊標籤名稱，直接在頁籤內重新命名原始檔案；重新命名保留影像副檔名。
   - 截圖、拖放檔案與剪貼簿影像共用頁籤建立流程；拖放保留來源 `Path` 並以 clean document 開啟，剪貼簿則建立新的 unsaved document。
@@ -47,6 +48,7 @@
 
 - `icons.py`
   - 程式內自繪 toolbar/system tray icon。
+  - 各工具圖示在共同畫布內做視覺置中；鉛筆圖示另校正其斜向外形造成的垂直偏移。
   - 工作列與系統匣相機圖示分別調整透明邊距，並提供 16–64px 多解析度 pixmap；macOS 選單列另使用接近正方形的相機配置填滿有限高度，讓各平台顯示槽位維持清楚且一致的視覺占比。
 
 - `settings.py`
@@ -96,8 +98,8 @@
 目前測試以輕量單元測試和 Qt offscreen smoke 為主：
 
 - `tests/test_document.py`: tab title、dirty/save 狀態、文件 reindex。
-- `tests/test_icons.py`: 工作列與系統匣圖示在原生槽位尺寸中的不透明圖案占比。
-- `tests/test_main_window.py`: 圖片捲軸排除 Canvas padding 的幾何與補白元件。
+- `tests/test_icons.py`: 工作列與系統匣圖示在原生槽位尺寸中的不透明圖案占比，以及工具圖示的視覺置中。
+- `tests/test_main_window.py`: 工具列按鈕尺寸、圖片捲軸排除 Canvas padding 的幾何與補白元件。
 - 以 `uv run pytest -q` 與 `uv run python -m compileall src tests` 執行跨平台檢查。
 
 重要的 GUI/OS 行為仍需手動驗收，尤其是全域快捷鍵、視窗選取、游標擷取與剪貼簿。

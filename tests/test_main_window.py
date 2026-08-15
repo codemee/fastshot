@@ -1,9 +1,25 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QImage, QKeySequence
-from PySide6.QtWidgets import QScrollArea, QWidget
+from PySide6.QtWidgets import QScrollArea, QToolBar, QToolButton, QWidget
 
 from fshot.canvas import CANVAS_PADDING
 from fshot.main_window import _align_scrollbars_to_image
+
+
+def test_editor_toolbar_uses_compact_buttons(qt_app):
+    from fshot.main_window import EditorWindow
+
+    window = EditorWindow()
+    toolbar = window.findChild(QToolBar, "editorToolbar")
+    buttons = [
+        toolbar.widgetForAction(action)
+        for action in toolbar.actions()
+        if isinstance(toolbar.widgetForAction(action), QToolButton)
+    ]
+
+    assert toolbar.iconSize() == QSize(20, 20)
+    assert buttons
+    assert all(button.size() == QSize(34, 34) for button in buttons)
 
 
 def test_image_scrollbars_exclude_canvas_padding(qt_app):

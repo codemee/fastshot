@@ -1,7 +1,7 @@
-from fshot.icons import camera_icon, tray_icon
+from fshot.icons import camera_icon, tool_icon, tray_icon
 
 
-def _opaque_bounds(icon, size):
+def _opaque_rect(icon, size):
     image = icon.pixmap(size, size).toImage()
     opaque = [
         (x, y)
@@ -13,6 +13,11 @@ def _opaque_bounds(icon, size):
     right = max(x for x, _y in opaque)
     top = min(y for _x, y in opaque)
     bottom = max(y for _x, y in opaque)
+    return left, top, right, bottom
+
+
+def _opaque_bounds(icon, size):
+    left, top, right, bottom = _opaque_rect(icon, size)
     return right - left + 1, bottom - top + 1
 
 
@@ -35,3 +40,9 @@ def test_macos_tray_icon_fills_the_menu_bar_slot(qt_app):
 
     assert width >= 15
     assert height >= 15
+
+
+def test_pen_tool_icon_is_vertically_centered(qt_app):
+    _left, top, _right, bottom = _opaque_rect(tool_icon("pen"), 32)
+
+    assert abs(((top + bottom) / 2) - 15.5) <= 1.5

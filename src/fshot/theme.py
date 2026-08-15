@@ -100,6 +100,7 @@ def _stylesheet(mode: ThemeMode) -> str:
             QMainWindow { background: #202124; }
             QToolBar { background: #252629; border: 0; border-bottom: 1px solid #3c4043; spacing: 4px; }
             QToolButton { padding: 6px; border-radius: 4px; border: 1px solid transparent; }
+            QToolBar QToolButton { padding: 4px; }
             QToolButton::menu-indicator { image: none; width: 0px; }
             QToolButton:hover, QToolButton:checked { background: #3c4043; border-color: transparent; }
             QTabWidget::pane { border: 0; }
@@ -191,6 +192,7 @@ def _stylesheet(mode: ThemeMode) -> str:
         QMainWindow { background: #f8f9fa; }
         QToolBar { background: #ffffff; border: 0; border-bottom: 1px solid #dee2e6; spacing: 4px; }
         QToolButton { padding: 6px; border-radius: 4px; border: 1px solid transparent; }
+        QToolBar QToolButton { padding: 4px; }
         QToolButton::menu-indicator { image: none; width: 0px; }
         QToolButton:hover, QToolButton:checked { background: #e9ecef; border-color: transparent; }
         QTabWidget::pane { border: 0; }
