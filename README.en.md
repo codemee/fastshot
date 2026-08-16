@@ -33,6 +33,8 @@ After installation, run the app with `fshot`. Upgrade to the latest PyPI release
 uv tool upgrade fshot
 ```
 
+When installed with `uv tool install`, FShot checks PyPI in the background at most once per day. The tray menu can check manually or disable automatic checks. When an update is available, you can update and restart, postpone it, or skip that release. FShot asks before discarding any unsaved screenshots. `uvx`, source checkouts, and other non-uv-tool installations receive manual guidance and are never modified automatically.
+
 Install the latest development version directly from GitHub's `main` branch:
 
 ```powershell

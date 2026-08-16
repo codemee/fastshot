@@ -88,3 +88,15 @@ def test_toolbar_tooltips_include_shortcuts(qt_app, tmp_path):
     )
     assert native_save_text in window.save_action.toolTip()
     assert native_zoom in window.zoom_in_action.toolTip()
+
+
+def test_update_messages_are_translated(tmp_path):
+    settings = QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat)
+    manager = LanguageManager(settings, QLocale("en_US"))
+
+    assert manager.text("check_updates") == "Check for updates..."
+
+    manager.set_mode(LanguageMode.ZH_TW)
+
+    assert manager.text("check_updates") == "檢查更新…"
+    assert "1.1.0" in manager.text("update_available", current="1.0.0", latest="1.1.0")

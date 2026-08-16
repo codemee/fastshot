@@ -35,6 +35,14 @@ def test_editor_toolbar_uses_compact_buttons(qt_app):
     assert all(button.size() == QSize(34, 34) for button in buttons)
 
 
+def test_update_can_proceed_without_unsaved_documents(qt_app):
+    from fshot.main_window import EditorWindow
+
+    window = EditorWindow()
+
+    assert window.confirm_discard_all("update_discard_all")
+
+
 def test_image_scrollbars_exclude_canvas_padding(qt_app):
     area = QScrollArea()
     area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)

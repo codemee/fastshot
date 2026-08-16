@@ -53,6 +53,13 @@ Linux is not currently a primary target. X11 and Wayland differ substantially in
 - `capture.py`: shared capture flow and platform delegation.
 - `app.py`: Windows native filter, macOS event tap, and fallback lifecycle.
 
+## Automatic Updates
+
+- Automatic installation is available only for `uv tool install fshot`; `uvx`, source checkouts, and ordinary virtual environments are conservatively reported as unsupported.
+- Windows uses a hidden Windows PowerShell helper, while macOS/Linux use a detached `/bin/sh` helper. The helper only waits for FShot to exit normally; it cancels on timeout and never force-terminates the app.
+- uv performs the actual version-qualified `uv tool upgrade`; FShot never mutates the tool environment directly.
+- The current capture must finish first, and unsaved tabs require confirmation. After restart, FShot verifies the installed package metadata and reports the actual result.
+
 ## Manual Acceptance Checklist
 
 - Shortcuts trigger capture and are not forwarded to the focused application.

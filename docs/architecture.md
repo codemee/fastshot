@@ -16,6 +16,12 @@
   - 建立 `QApplication`、`FShotApplication`、系統匣圖示。
   - Windows 使用 `RegisterHotKey` 接收全域快捷鍵，避免快捷鍵送到焦點視窗。
   - 收到快捷鍵後隱藏編輯視窗，呼叫 `CaptureService`，截圖完成後加入編輯頁籤並複製到剪貼簿。
+  - 系統匣提供手動及每日自動更新檢查；確認更新後先處理未儲存資料，再啟動外部 helper 並正常結束程式，重啟時顯示實際更新結果。
+
+- `updates.py`
+  - 在 Qt thread pool 執行 `uv-tool-updater` 的同步網路檢查，避免阻塞 UI thread。
+  - 使用 `QSettings` 保存自動檢查開關、上次檢查時間及略過版本；背景檢查最多每日一次，手動檢查不受間隔限制。
+  - 不直接修改 uv tool environment；安裝、等待程序退出與重新啟動由 `uv-tool-updater` 協調。
 
 - `capture.py`
   - 管理所有截圖模式：全螢幕、矩形區域、焦點視窗、選取視窗/控制項。
@@ -102,6 +108,7 @@
 - `tests/test_icons.py`: 工作列與系統匣圖示在原生槽位尺寸中的不透明圖案占比，以及工具圖示的視覺置中。
 - `tests/test_main_window.py`: 工具列按鈕尺寸、圖片捲軸排除 Canvas padding 的幾何與補白元件。
 - `tests/test_version.py`: 執行時版本與已安裝套件 metadata 保持一致。
+- `tests/test_updates.py`: 自動檢查間隔、略過版本、背景執行與錯誤回報。
 - 以 `uv run pytest -q` 與 `uv run python -m compileall src tests` 執行跨平台檢查。
 
 重要的 GUI/OS 行為仍需手動驗收，尤其是全域快捷鍵、視窗選取、游標擷取與剪貼簿。

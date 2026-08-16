@@ -1,13 +1,29 @@
 from __future__ import annotations
 
 import ctypes
+import os
 import sys
 import traceback
 from ctypes import wintypes
+from pathlib import Path
 
-from PySide6.QtCore import QAbstractNativeEventFilter, QObject, QTimer, Signal
+from PySide6.QtCore import (
+    QAbstractNativeEventFilter,
+    QObject,
+    QSettings,
+    QStandardPaths,
+    QTimer,
+    Signal,
+)
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon
+from uv_tool_updater import (
+    InstallStatus,
+    ReleaseInfo,
+    UpdateCheck,
+    UpdateStatus,
+    Updater,
+)
 
 from fshot.capture import CaptureService
 from fshot.icons import tray_icon
@@ -16,6 +32,7 @@ from fshot.i18n import LanguageManager
 from fshot.main_window import EditorWindow
 from fshot.settings import CaptureMode
 from fshot.theme import ThemeManager
+from fshot.updates import UpdateManager
 
 if sys.platform == "win32":
     import win32con
@@ -124,12 +141,31 @@ class WindowsHotkeyFilter(QAbstractNativeEventFilter):
 
 
 class FShotApplication(QObject):
-    def __init__(self, app: QApplication) -> None:
+    def __init__(
+        self,
+        app: QApplication,
+        *,
+        updater: Updater | None = None,
+        update_settings: QSettings | None = None,
+    ) -> None:
         super().__init__()
         self.app = app
         self.app.setApplicationName("FShot")
         self.app.setOrganizationName("FShot")
         self.app.setQuitOnLastWindowClosed(False)
+        self.update_settings = update_settings if update_settings is not None else QSettings()
+        self.updater = updater or Updater(
+            package_name="fshot",
+            command_name="fshot",
+            state_dir=Path(
+                QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppLocalDataLocation)
+            )
+            / "updates",
+        )
+        self.update_manager = UpdateManager(self.updater, self.update_settings)
+        self.update_manager.checkFinished.connect(self._update_check_finished)
+        self.update_manager.checkFailed.connect(self._update_check_failed)
+        self.update_manager.checkingChanged.connect(self._update_checking_changed)
         self.theme_manager = ThemeManager(self.app)
         self.language_manager = LanguageManager()
         self.capture = CaptureService()
@@ -151,12 +187,17 @@ class FShotApplication(QObject):
     def run(self) -> int:
         self.tray.show()
         self.window.hide()
+        QTimer.singleShot(0, self._show_pending_update_result)
+        QTimer.singleShot(5000, self._start_automatic_update_check)
         return self.app.exec()
 
     def show_window(self) -> None:
         _activate_window(self.window)
 
     def quit(self) -> None:
+        self._shutdown()
+
+    def _shutdown(self) -> None:
         self._unregister_hotkeys()
         self.tray.hide()
         self.app.quit()
@@ -226,6 +267,19 @@ class FShotApplication(QObject):
         tray = QSystemTrayIcon(tray_icon(macos=sys.platform == "darwin"), self.app)
         tray.setToolTip("FShot")
         menu = QMenu()
+        self.check_updates_action = QAction(self.language_manager.text("check_updates"), menu)
+        self.check_updates_action.triggered.connect(
+            lambda _checked=False: self.update_manager.start_check(manual=True)
+        )
+        menu.addAction(self.check_updates_action)
+        self.automatic_updates_action = QAction(
+            self.language_manager.text("automatic_update_checks"), menu
+        )
+        self.automatic_updates_action.setCheckable(True)
+        self.automatic_updates_action.setChecked(self.update_manager.automatic_checks_enabled)
+        self.automatic_updates_action.toggled.connect(self._automatic_update_checks_toggled)
+        menu.addAction(self.automatic_updates_action)
+        menu.addSeparator()
         self.exit_action = QAction(self.language_manager.text("exit"), menu)
         self.exit_action.triggered.connect(self.quit)
         menu.addAction(self.exit_action)
@@ -234,7 +288,165 @@ class FShotApplication(QObject):
         return tray
 
     def _language_changed(self, _mode, _effective) -> None:
+        self.check_updates_action.setText(
+            self.language_manager.text(
+                "checking_updates" if self.update_manager.is_checking else "check_updates"
+            )
+        )
+        self.automatic_updates_action.setText(
+            self.language_manager.text("automatic_update_checks")
+        )
         self.exit_action.setText(self.language_manager.text("exit"))
+
+    def _automatic_update_checks_toggled(self, enabled: bool) -> None:
+        self.update_manager.set_automatic_checks_enabled(enabled)
+        if enabled:
+            QTimer.singleShot(0, self._start_automatic_update_check)
+
+    def _start_automatic_update_check(self) -> None:
+        self.update_manager.start_check(manual=False)
+
+    def _update_checking_changed(self, checking: bool) -> None:
+        self.check_updates_action.setEnabled(not checking)
+        self.check_updates_action.setText(
+            self.language_manager.text("checking_updates" if checking else "check_updates")
+        )
+
+    def _update_check_failed(self, message: str, manual: bool) -> None:
+        if manual:
+            QMessageBox.warning(
+                self.window,
+                "FShot",
+                self.language_manager.text("update_check_failed", error=message),
+            )
+
+    def _update_check_finished(self, check: UpdateCheck, manual: bool) -> None:
+        if check.status is UpdateStatus.UPDATE_AVAILABLE and check.release is not None:
+            version = str(check.release.version)
+            if not manual and self.update_manager.is_version_skipped(version):
+                return
+            self._offer_update(check)
+            return
+        if not manual:
+            return
+        if check.status is UpdateStatus.UP_TO_DATE:
+            current = str(check.installed.current_version) if check.installed is not None else ""
+            QMessageBox.information(
+                self.window,
+                "FShot",
+                self.language_manager.text("update_up_to_date", version=current),
+            )
+        elif check.status is UpdateStatus.UNSUPPORTED_INSTALLATION:
+            QMessageBox.information(
+                self.window,
+                "FShot",
+                self.language_manager.text("update_unsupported"),
+            )
+        else:
+            QMessageBox.warning(
+                self.window,
+                "FShot",
+                self.language_manager.text(
+                    "update_check_failed", error=check.message or check.error_code or "Unknown error"
+                ),
+            )
+
+    def _offer_update(self, check: UpdateCheck) -> None:
+        release = check.release
+        if release is None:
+            return
+        current = str(check.installed.current_version) if check.installed is not None else ""
+        latest = str(release.version)
+        dialog = QMessageBox(self.window)
+        dialog.setIcon(QMessageBox.Icon.Information)
+        dialog.setWindowTitle(self.language_manager.text("update_available_title"))
+        dialog.setText(
+            self.language_manager.text(
+                "update_available", current=current, latest=latest
+            )
+        )
+        update_button = dialog.addButton(
+            self.language_manager.text("update_now"), QMessageBox.ButtonRole.AcceptRole
+        )
+        later_button = dialog.addButton(
+            self.language_manager.text("update_later"), QMessageBox.ButtonRole.RejectRole
+        )
+        skip_button = dialog.addButton(
+            self.language_manager.text("update_skip"), QMessageBox.ButtonRole.DestructiveRole
+        )
+        dialog.setDefaultButton(update_button)
+        dialog.exec()
+        clicked = dialog.clickedButton()
+        if clicked is skip_button:
+            self.update_manager.skip_version(latest)
+        elif clicked is update_button:
+            self._install_update(release)
+        elif clicked is later_button:
+            return
+
+    def _install_update(self, release: ReleaseInfo) -> None:
+        if self._capture_in_progress:
+            QMessageBox.information(
+                self.window,
+                "FShot",
+                self.language_manager.text("update_capture_in_progress"),
+            )
+            return
+        if not self.window.confirm_discard_all("update_discard_all"):
+            return
+        try:
+            session = self.updater.prepare_update(
+                release,
+                restart_args=[],
+                restart_on_failure=True,
+                wait_timeout=600,
+            )
+            session.start_helper(host_pid=os.getpid())
+        except Exception as exc:
+            QMessageBox.warning(
+                self.window,
+                "FShot",
+                self.language_manager.text("update_start_failed", error=exc),
+            )
+            return
+        self._shutdown()
+
+    def _show_pending_update_result(self) -> None:
+        try:
+            result = self.updater.consume_latest_result()
+        except Exception as exc:
+            self.tray.showMessage(
+                "FShot",
+                self.language_manager.text("update_result_invalid", error=exc),
+                QSystemTrayIcon.MessageIcon.Warning,
+                10000,
+            )
+            return
+        if result is None:
+            return
+        icon = QSystemTrayIcon.MessageIcon.Information
+        if result.status is InstallStatus.SUCCEEDED:
+            message = self.language_manager.text(
+                "update_result_succeeded",
+                version=result.actual_version or result.requested_version or "",
+            )
+        elif result.status is InstallStatus.NO_CHANGE:
+            icon = QSystemTrayIcon.MessageIcon.Warning
+            message = self.language_manager.text(
+                "update_result_no_change", version=result.actual_version or result.previous_version
+            )
+        elif result.status is InstallStatus.APP_EXIT_TIMEOUT:
+            icon = QSystemTrayIcon.MessageIcon.Warning
+            message = self.language_manager.text("update_result_timeout")
+        elif result.status is InstallStatus.RESTART_FAILED:
+            icon = QSystemTrayIcon.MessageIcon.Warning
+            message = self.language_manager.text("update_result_restart_failed")
+        else:
+            icon = QSystemTrayIcon.MessageIcon.Critical
+            message = self.language_manager.text(
+                "update_result_failed", error=result.error or "Unknown error"
+            )
+        self.tray.showMessage("FShot", message, icon, 10000)
 
     def _tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
         if reason == QSystemTrayIcon.ActivationReason.DoubleClick:

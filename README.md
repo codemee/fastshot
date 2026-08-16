@@ -33,6 +33,8 @@ fshot
 uv tool upgrade fshot
 ```
 
+使用 `uv tool install` 安裝時，FShot 啟動後會在背景每日檢查一次 PyPI。系統匣選單可手動「檢查更新…」或停用自動檢查；發現新版時可選擇更新並重新啟動、稍後處理或略過該版本。更新前若有尚未儲存的截圖，FShot 會先要求確認。`uvx`、原始碼開發環境與其他非 uv tool 安裝方式只會提供手動更新指引，不會自行修改環境。
+
 若要直接從 GitHub 測試 `main` 的最新開發成果：
 
 ```powershell

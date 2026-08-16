@@ -1,6 +1,6 @@
 [project]
 name = "fshot"
-version = "0.0.10"
+version = "0.0.11"
 description = "Keyboard-first cross-platform screenshot utility"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -14,6 +14,7 @@ dependencies = [
     "pyobjc-framework-quartz>=12.0; sys_platform == 'darwin'",
     "pyside6>=6.10.0",
     "pywin32>=311; sys_platform == 'win32'",
+    "uv-tool-updater>=0.1.9,<0.2",
 ]
 
 [project.scripts]

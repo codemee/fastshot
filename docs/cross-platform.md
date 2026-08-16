@@ -77,6 +77,13 @@ Linux 尚未作為主要目標。Wayland/X11 差異很大，尤其是全域快�
 - `capture.py`: 保留跨平台擷取流程，僅在平台能力入口委派給 macOS backend。
 - `app.py`: Windows native filter、macOS event tap 與其他平台 fallback 的生命週期管理。
 
+## Automatic Updates
+
+- 僅 `uv tool install fshot` 安裝可自動更新；`uvx`、原始碼 checkout 與一般 virtualenv 會保守地顯示為不支援。
+- Windows 使用隱藏的 Windows PowerShell helper，macOS/Linux 使用獨立的 `/bin/sh` helper。Helper 只等待 FShot 正常退出，逾時會取消，不會強制終止程式。
+- 實際安裝由 uv 執行帶有已驗證目標版本的 `uv tool upgrade`；FShot 不直接修改 tool environment。
+- 更新前必須先完成目前的擷取，且有未儲存頁籤時會要求確認。更新後重新啟動的 FShot 會從套件 metadata 驗證實際版本並顯示結果。
+
 ## Manual Acceptance Checklist
 
 每個平台至少要手動驗收：

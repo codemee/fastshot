@@ -12,7 +12,8 @@ This document introduces the FShot codebase. Read [cross-platform.en.md](cross-p
 
 ## Main Modules
 
-- `app.py`: creates the application and tray; registers Windows/macOS global shortcuts; hides the editor before capture and adds successful captures to the editor and clipboard.
+- `app.py`: creates the application and tray; registers Windows/macOS global shortcuts; hides the editor before capture and adds successful captures to the editor and clipboard. The tray exposes manual and daily automatic update checks. After user confirmation and unsaved-data handling, it starts the external updater helper, exits normally, and reports the metadata-confirmed result after restart.
+- `updates.py`: runs the synchronous `uv-tool-updater` network check in a Qt thread pool, keeping it off the UI thread. It persists the automatic-check toggle, last check time, and skipped version with `QSettings`; background checks run at most daily while manual checks bypass the interval. Installation changes, process waiting, and restart remain delegated to `uv-tool-updater`.
 - `capture.py`: coordinates full-screen, region, focused-window, and selected window/control capture. Windows-specific DWM, UI Automation, cursor, and fallback logic lives here; macOS capabilities are delegated to `platforms/macos.py`. Delayed capture also lives here.
 - `platforms/macos.py`: handles permissions, Accessibility focused-window/control hit testing, cursor capture, and consumable Quartz global shortcuts.
 - `main_window.py`: owns the editor, toolbar, tabs, save/save-as, zoom, and settings panels. The window title shows the current version from installed package metadata and appends the active tab name when a document is open. The toolbar uses 20 px icons and fixed 34 px buttons for a compact, consistent target across platforms. Saved tabs can rename their source file inline with Windows/Linux `F2`, macOS `Return`, or a double-click; the image extension is preserved. Screenshots, dropped files, and clipboard images share one tab creation path. Dropped files retain their source `Path` and open clean; clipboard images are new unsaved documents. Windows puts the dirty marker left of the title and close button on the right; other platforms follow native tab placement.
@@ -53,6 +54,7 @@ Cropping is also an image operation: releasing a dragged outer crop handle appli
 - `tests/test_icons.py`: opaque artwork coverage at native taskbar and system-tray icon sizes, plus visual centering for tool glyphs.
 - `tests/test_main_window.py`: toolbar button sizing, image scrollbar geometry, and padding widgets that exclude canvas padding.
 - `tests/test_version.py`: runtime version consistency with installed package metadata.
+- `tests/test_updates.py`: automatic-check scheduling, skipped versions, background execution, and error reporting.
 - Run `uv run pytest -q` and `uv run python -m compileall src tests` for cross-platform checks.
 
 Global shortcuts, window selection, cursor capture, drag/drop, and clipboard behavior still require manual OS-level acceptance testing.

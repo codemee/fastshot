@@ -379,20 +379,24 @@ class EditorWindow(QMainWindow):
             canvas.set_zoom(1.0)
 
     def closeEvent(self, event) -> None:
-        if self._has_dirty_documents():
-            reply = QMessageBox.question(
-                self,
-                "FShot",
-                self._tr("close_discard_all"),
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No,
-            )
-            if reply != QMessageBox.StandardButton.Yes:
-                event.ignore()
-                return
+        if not self.confirm_discard_all():
+            event.ignore()
+            return
         self._discard_all_tabs()
         self.hide()
         event.ignore()
+
+    def confirm_discard_all(self, message_key: str = "close_discard_all") -> bool:
+        if not self._has_dirty_documents():
+            return True
+        reply = QMessageBox.question(
+            self,
+            "FShot",
+            self._tr(message_key),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        return reply == QMessageBox.StandardButton.Yes
 
     def changeEvent(self, event) -> None:
         if event.type() == event.Type.WindowStateChange and self.isMinimized():
