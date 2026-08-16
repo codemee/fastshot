@@ -72,6 +72,8 @@ def tool_icon(
     checked: bool = False,
     badge: str | None = None,
     dark: bool = False,
+    line_start: str = "none",
+    line_end: str = "none",
 ) -> QIcon:
     pixmap = QPixmap(32, 32)
     pixmap.fill(Qt.GlobalColor.transparent)
@@ -98,7 +100,11 @@ def tool_icon(
         painter.drawEllipse(12, 23, 2, 2)
         painter.restore()
     elif name == "line":
-        painter.drawLine(7, 24, 25, 8)
+        start = QPoint(7, 24)
+        end = QPoint(25, 8)
+        painter.drawLine(start, end)
+        _draw_line_end_icon(painter, start, ((9, 17), (15, 23)), line_start, ink)
+        _draw_line_end_icon(painter, end, ((23, 15), (17, 9)), line_end, ink)
     elif name == "arrow":
         painter.drawLine(24, 8, 7, 25)
         painter.drawLine(7, 25, 9, 17)
@@ -280,6 +286,50 @@ def tool_icon(
 
     painter.end()
     return QIcon(pixmap)
+
+
+def line_end_style_icon(style: str, endpoint: str, dark: bool = False) -> QIcon:
+    pixmap = QPixmap(64, 24)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = _painter(pixmap)
+    ink = DARK_INK if dark else INK
+    painter.setPen(
+        QPen(
+            ink,
+            2.0,
+            Qt.PenStyle.SolidLine,
+            Qt.PenCapStyle.RoundCap,
+            Qt.PenJoinStyle.RoundJoin,
+        )
+    )
+    start = QPoint(8, 12)
+    end = QPoint(56, 12)
+    painter.drawLine(start, end)
+    if endpoint == "start":
+        _draw_line_end_icon(painter, start, ((16, 6), (16, 18)), style, ink, circle_radius=4)
+    else:
+        _draw_line_end_icon(painter, end, ((48, 6), (48, 18)), style, ink, circle_radius=4)
+    painter.end()
+    return QIcon(pixmap)
+
+
+def _draw_line_end_icon(
+    painter: QPainter,
+    tip: QPoint,
+    arrow_points: tuple[tuple[int, int], tuple[int, int]],
+    style: str,
+    ink: QColor,
+    circle_radius: int = 3,
+) -> None:
+    if style == "arrow":
+        for point in arrow_points:
+            painter.drawLine(tip, QPoint(*point))
+    elif style == "circle":
+        painter.save()
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(ink)
+        painter.drawEllipse(tip, circle_radius, circle_radius)
+        painter.restore()
 
 
 def _draw_magnifier(painter: QPainter) -> None:

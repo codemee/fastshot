@@ -22,7 +22,7 @@ wheels = [
 
 [[package]]
 name = "fshot"
-version = "0.0.11"
+version = "0.0.12"
 source = { editable = "." }
 dependencies = [
     { name = "comtypes", marker = "sys_platform == 'win32'" },

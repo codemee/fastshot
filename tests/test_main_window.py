@@ -32,7 +32,55 @@ def test_editor_toolbar_uses_compact_buttons(qt_app):
 
     assert toolbar.iconSize() == QSize(20, 20)
     assert buttons
-    assert all(button.size() == QSize(34, 34) for button in buttons)
+    assert window.line_button.size() == QSize(34, 34)
+    line_end_button = window.line_end_button
+    assert line_end_button.size() == QSize(20, 34)
+    assert all(
+        button.size() == QSize(34, 34)
+        for button in buttons
+        if button is not line_end_button
+    )
+
+
+def test_line_button_and_dropdown_are_flush(qt_app):
+    from fshot.main_window import EditorWindow
+
+    window = EditorWindow()
+    window.show()
+    qt_app.processEvents()
+
+    assert window.line_button.parentWidget() is window.line_tool_group
+    assert window.line_end_button.parentWidget() is window.line_tool_group
+    assert window.line_button.geometry().right() + 1 == window.line_end_button.geometry().left()
+    assert window.line_button.property("lineToolMain")
+    assert window.line_end_button.property("lineToolDropdown")
+
+
+def test_line_tool_has_independent_endpoint_style_menu(qt_app):
+    from fshot.main_window import EditorWindow
+    from fshot.settings import LineEndStyle
+
+    window = EditorWindow()
+
+    assert not hasattr(window, "arrow_action")
+    assert window.line_end_button.menu() is window.line_end_menu
+    assert window.line_start_combo.count() == 3
+    assert window.line_end_combo.count() == 3
+
+    original_icon = window.line_action.icon().cacheKey()
+    window.line_start_combo.setCurrentIndex(
+        window.line_start_combo.findData(LineEndStyle.ARROW.value)
+    )
+    window.line_end_combo.setCurrentIndex(
+        window.line_end_combo.findData(LineEndStyle.CIRCLE.value)
+    )
+
+    assert window.settings.line_start_style is LineEndStyle.ARROW
+    assert window.settings.line_end_style is LineEndStyle.CIRCLE
+    assert window.line_action.icon().cacheKey() != original_icon
+
+    window.line_action.setChecked(True)
+    assert window.line_end_button.property("lineSelected") is True
 
 
 def test_update_can_proceed_without_unsaved_documents(qt_app):

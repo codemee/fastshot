@@ -38,11 +38,11 @@ from PySide6.QtWidgets import (
 from fshot import __version__
 from fshot.canvas import CANVAS_PADDING, ImageCanvas
 from fshot.document import ShotDocument, make_tab_title
-from fshot.icons import camera_icon, tool_icon
+from fshot.icons import camera_icon, line_end_style_icon, tool_icon
 from fshot.hotkeys import HOTKEY_ACTIONS, HotkeyAction, HotkeyCombination, default_hotkeys
 from fshot.i18n import LanguageManager, LanguageMode
 from fshot.qt_image import pil_to_qimage
-from fshot.settings import CaptureMode, CaptureSettings, DrawingSettings, Tool
+from fshot.settings import CaptureMode, CaptureSettings, DrawingSettings, LineEndStyle, Tool
 from fshot.theme import ThemeManager, ThemeMode
 
 IMAGE_SUFFIXES = {
@@ -61,6 +61,7 @@ IMAGE_SUFFIXES = {
 LAST_SAVE_DIRECTORY_KEY = "files/last_save_directory"
 TOOLBAR_ICON_SIZE = QSize(20, 20)
 TOOLBAR_BUTTON_SIZE = QSize(34, 34)
+TOOLBAR_DROPDOWN_SIZE = QSize(20, 34)
 
 
 def _align_scrollbars_to_image(area: QScrollArea) -> None:
@@ -420,20 +421,41 @@ class EditorWindow(QMainWindow):
 
         self.pen_action = self._tool_action("Pen", "Alt+P", Tool.PEN, "pen")
         self.line_action = self._tool_action("Line", "Alt+L", Tool.LINE, "line")
-        self.arrow_action = self._tool_action("Arrow", "Alt+A", Tool.ARROW, "arrow")
         self.rect_action = self._tool_action("Rectangle", "Alt+R", Tool.RECTANGLE, "rectangle")
         self.text_action = self._tool_action("Text", "Alt+T", Tool.TEXT, "text")
         self.mosaic_action = self._tool_action("Mosaic", "Alt+M", Tool.MOSAIC, "mosaic")
         for action in [
             self.pen_action,
             self.line_action,
-            self.arrow_action,
             self.rect_action,
             self.text_action,
             self.mosaic_action,
         ]:
             self.tool_group.addAction(action)
-            toolbar.addAction(action)
+            if action is self.line_action:
+                self.line_end_menu = self._create_line_end_menu()
+                self.line_tool_group = QWidget()
+                self.line_tool_group.setObjectName("lineToolGroup")
+                line_tool_layout = QHBoxLayout(self.line_tool_group)
+                line_tool_layout.setContentsMargins(0, 0, 0, 0)
+                line_tool_layout.setSpacing(0)
+                self.line_button = QToolButton()
+                self.line_button.setObjectName("lineToolButton")
+                self.line_button.setProperty("lineToolMain", True)
+                self.line_button.setDefaultAction(self.line_action)
+                self.line_end_button = QToolButton()
+                self.line_end_button.setObjectName("lineEndButton")
+                self.line_end_button.setProperty("lineToolDropdown", True)
+                self.line_end_button.setProperty("lineSelected", False)
+                self.line_end_button.setArrowType(Qt.ArrowType.DownArrow)
+                self.line_end_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+                self.line_end_button.setMenu(self.line_end_menu)
+                line_tool_layout.addWidget(self.line_button)
+                line_tool_layout.addWidget(self.line_end_button)
+                toolbar.addWidget(self.line_tool_group)
+                self.line_action.toggled.connect(self._sync_line_tool_group)
+            else:
+                toolbar.addAction(action)
         self.pen_action.setChecked(True)
 
         self.style_action = QAction(self._style_icon(), "Line and color", self)
@@ -513,6 +535,12 @@ class EditorWindow(QMainWindow):
             button = toolbar.widgetForAction(action)
             if isinstance(button, QToolButton):
                 button.setFixedSize(TOOLBAR_BUTTON_SIZE)
+        self.line_button.setFixedSize(TOOLBAR_BUTTON_SIZE)
+        self.line_end_button.setFixedSize(TOOLBAR_DROPDOWN_SIZE)
+        self.line_tool_group.setFixedSize(
+            TOOLBAR_BUTTON_SIZE.width() + TOOLBAR_DROPDOWN_SIZE.width(),
+            TOOLBAR_BUTTON_SIZE.height(),
+        )
         self._refresh_toolbar_icons()
 
     def _tool_action(self, text: str, shortcut: str, tool: Tool, icon_name: str) -> QAction:
@@ -521,6 +549,86 @@ class EditorWindow(QMainWindow):
         action.setShortcut(shortcut)
         action.triggered.connect(lambda: self.set_active_tool(tool))
         return action
+
+    def _create_line_end_menu(self) -> QMenu:
+        menu = QMenu(self)
+        menu.setObjectName("lineEndMenu")
+        panel = QWidget(menu)
+        panel.setObjectName("lineEndPanel")
+        layout = QGridLayout(panel)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setHorizontalSpacing(10)
+        layout.setVerticalSpacing(8)
+
+        self.line_start_label = QLabel()
+        self.line_end_label = QLabel()
+        self.line_start_combo = QComboBox()
+        self.line_end_combo = QComboBox()
+        self.line_start_combo.setObjectName("lineStartStyle")
+        self.line_end_combo.setObjectName("lineEndStyle")
+        for combo in (self.line_start_combo, self.line_end_combo):
+            combo.setIconSize(QSize(64, 24))
+            combo.setMinimumWidth(88)
+        layout.addWidget(self.line_start_label, 0, 0)
+        layout.addWidget(self.line_start_combo, 0, 1)
+        layout.addWidget(self.line_end_label, 1, 0)
+        layout.addWidget(self.line_end_combo, 1, 1)
+
+        self.line_start_combo.currentIndexChanged.connect(
+            lambda: self._set_line_end_style("start", self.line_start_combo)
+        )
+        self.line_end_combo.currentIndexChanged.connect(
+            lambda: self._set_line_end_style("end", self.line_end_combo)
+        )
+        action = QWidgetAction(menu)
+        action.setDefaultWidget(panel)
+        menu.addAction(action)
+        self._refresh_line_end_panel()
+        return menu
+
+    def _refresh_line_end_panel(self) -> None:
+        self.line_start_label.setText(self._tr("line_start"))
+        self.line_end_label.setText(self._tr("line_end"))
+        choices = (
+            (LineEndStyle.NONE, "line_end_none"),
+            (LineEndStyle.ARROW, "line_end_arrow"),
+            (LineEndStyle.CIRCLE, "line_end_circle"),
+        )
+        for combo, endpoint, selected, accessible_name in (
+            (self.line_start_combo, "start", self.settings.line_start_style, self._tr("line_start")),
+            (self.line_end_combo, "end", self.settings.line_end_style, self._tr("line_end")),
+        ):
+            combo.blockSignals(True)
+            combo.clear()
+            combo.setAccessibleName(accessible_name)
+            for style, label_key in choices:
+                label = self._tr(label_key)
+                combo.addItem(
+                    line_end_style_icon(style.value, endpoint, dark=self._is_dark_theme()),
+                    "",
+                    style.value,
+                )
+                index = combo.count() - 1
+                combo.setItemData(index, label, Qt.ItemDataRole.ToolTipRole)
+                combo.setItemData(index, label, Qt.ItemDataRole.AccessibleDescriptionRole)
+            combo.setCurrentIndex(combo.findData(selected.value))
+            combo.blockSignals(False)
+
+    def _set_line_end_style(self, endpoint: str, combo: QComboBox) -> None:
+        value = combo.currentData()
+        if value is None:
+            return
+        style = LineEndStyle(value)
+        if endpoint == "start":
+            self.settings.line_start_style = style
+        else:
+            self.settings.line_end_style = style
+        self.line_action.setIcon(self._line_icon())
+
+    def _sync_line_tool_group(self, checked: bool) -> None:
+        self.line_end_button.setProperty("lineSelected", checked)
+        self.line_end_button.style().unpolish(self.line_end_button)
+        self.line_end_button.style().polish(self.line_end_button)
 
     def _show_style_panel(self) -> None:
         menu = QMenu(self)
@@ -1125,12 +1233,12 @@ class EditorWindow(QMainWindow):
         for action in [
             self.pen_action,
             self.line_action,
-            self.arrow_action,
             self.rect_action,
             self.text_action,
             self.mosaic_action,
         ]:
             action.setEnabled(has_doc)
+        self.line_end_button.setEnabled(has_doc)
         self.style_action.setEnabled(has_doc)
         self.copy_action.setEnabled(has_doc)
         self.save_action.setEnabled(bool(doc and doc.can_save))
@@ -1146,6 +1254,14 @@ class EditorWindow(QMainWindow):
 
     def _style_icon(self) -> QIcon:
         return tool_icon("style", self.settings.color, self.settings.line_width, dark=self._is_dark_theme())
+
+    def _line_icon(self) -> QIcon:
+        return tool_icon(
+            "line",
+            dark=self._is_dark_theme(),
+            line_start=self.settings.line_start_style.value,
+            line_end=self.settings.line_end_style.value,
+        )
 
     def _delay_icon(self) -> QIcon:
         seconds = self.capture_settings.delay_seconds
@@ -1186,7 +1302,6 @@ class EditorWindow(QMainWindow):
         labels = (
             (self.pen_action, "pen"),
             (self.line_action, "line"),
-            (self.arrow_action, "arrow"),
             (self.rect_action, "rectangle"),
             (self.text_action, "text"),
             (self.mosaic_action, "mosaic"),
@@ -1207,6 +1322,8 @@ class EditorWindow(QMainWindow):
             label = self._tr(key)
             action.setText(label)
             action.setToolTip(self._tooltip_with_shortcuts(label, action))
+        self.line_end_button.setToolTip(self._tr("line_end_settings"))
+        self._refresh_line_end_panel()
         self.tab_menu_button.setToolTip(self._tr("open_tabs"))
         self.cursor_action.setText(self._tr("include_cursor"))
         self._set_include_cursor(self.capture_settings.include_cursor)
@@ -1237,8 +1354,6 @@ class EditorWindow(QMainWindow):
         dark = self._is_dark_theme()
         for action, name in (
             (self.pen_action, "pen"),
-            (self.line_action, "line"),
-            (self.arrow_action, "arrow"),
             (self.rect_action, "rectangle"),
             (self.text_action, "text"),
             (self.mosaic_action, "mosaic"),
@@ -1251,6 +1366,7 @@ class EditorWindow(QMainWindow):
             (self.hotkey_action, "keyboard"),
         ):
             action.setIcon(tool_icon(name, dark=dark))
+        self.line_action.setIcon(self._line_icon())
         self.style_action.setIcon(self._style_icon())
         self.cursor_action.setIcon(tool_icon("cursor", checked=self.capture_settings.include_cursor, dark=dark))
         self.delay_action.setIcon(self._delay_icon())

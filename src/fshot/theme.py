@@ -101,8 +101,10 @@ def _stylesheet(mode: ThemeMode) -> str:
             QToolBar { background: #252629; border: 0; border-bottom: 1px solid #3c4043; spacing: 4px; }
             QToolButton { padding: 6px; border-radius: 4px; border: 1px solid transparent; }
             QToolBar QToolButton { padding: 4px; }
+            QToolBar QToolButton[lineToolMain="true"] { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+            QToolBar QToolButton[lineToolDropdown="true"] { border-top-left-radius: 0; border-bottom-left-radius: 0; }
             QToolButton::menu-indicator { image: none; width: 0px; }
-            QToolButton:hover, QToolButton:checked { background: #3c4043; border-color: transparent; }
+            QToolButton:hover, QToolButton:checked, QToolButton[lineSelected="true"] { background: #3c4043; border-color: transparent; }
             QTabWidget::pane { border: 0; }
             QTabWidget::tab-bar { alignment: left; }
             QTabBar::tab { padding: 7px 12px; background: #292b2f; border: 0; margin-right: 1px; }
@@ -193,8 +195,10 @@ def _stylesheet(mode: ThemeMode) -> str:
         QToolBar { background: #ffffff; border: 0; border-bottom: 1px solid #dee2e6; spacing: 4px; }
         QToolButton { padding: 6px; border-radius: 4px; border: 1px solid transparent; }
         QToolBar QToolButton { padding: 4px; }
+        QToolBar QToolButton[lineToolMain="true"] { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+        QToolBar QToolButton[lineToolDropdown="true"] { border-top-left-radius: 0; border-bottom-left-radius: 0; }
         QToolButton::menu-indicator { image: none; width: 0px; }
-        QToolButton:hover, QToolButton:checked { background: #e9ecef; border-color: transparent; }
+        QToolButton:hover, QToolButton:checked, QToolButton[lineSelected="true"] { background: #e9ecef; border-color: transparent; }
         QTabWidget::pane { border: 0; }
         QTabWidget::tab-bar { alignment: left; }
         QTabBar::tab { padding: 7px 12px; background: #e9ecef; border: 0; margin-right: 1px; }

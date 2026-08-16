@@ -1,4 +1,4 @@
-from fshot.icons import camera_icon, tool_icon, tray_icon
+from fshot.icons import camera_icon, line_end_style_icon, tool_icon, tray_icon
 
 
 def _opaque_rect(icon, size):
@@ -19,6 +19,16 @@ def _opaque_rect(icon, size):
 def _opaque_bounds(icon, size):
     left, top, right, bottom = _opaque_rect(icon, size)
     return right - left + 1, bottom - top + 1
+
+
+def _opaque_points(icon, size):
+    image = icon.pixmap(size, size).toImage()
+    return {
+        (x, y)
+        for y in range(image.height())
+        for x in range(image.width())
+        if image.pixelColor(x, y).alpha() > 0
+    }
 
 
 def test_window_icon_fills_the_taskbar_slot(qt_app):
@@ -46,3 +56,22 @@ def test_pen_tool_icon_is_vertically_centered(qt_app):
     _left, top, _right, bottom = _opaque_rect(tool_icon("pen"), 32)
 
     assert abs(((top + bottom) / 2) - 15.5) <= 1.5
+
+
+def test_line_tool_icon_reflects_endpoint_styles(qt_app):
+    plain = tool_icon("line")
+    styled = tool_icon("line", line_start="arrow", line_end="circle")
+
+    assert _opaque_points(styled, 32) != _opaque_points(plain, 32)
+    assert len(_opaque_points(styled, 32)) > len(_opaque_points(plain, 32))
+
+
+def test_line_endpoint_option_icons_show_the_style_on_the_correct_side(qt_app):
+    plain = _opaque_points(line_end_style_icon("none", "start"), 64)
+    start_arrow = _opaque_points(line_end_style_icon("arrow", "start"), 64)
+    end_circle = _opaque_points(line_end_style_icon("circle", "end"), 64)
+
+    assert start_arrow != plain
+    assert end_circle != plain
+    assert len({point for point in start_arrow - plain if point[0] < 24}) > 0
+    assert len({point for point in end_circle - plain if point[0] > 40}) > 0

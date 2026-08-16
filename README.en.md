@@ -67,9 +67,10 @@ macOS uses the same `Ctrl+Shift` letter combinations. On first use, grant Screen
 
 Editor shortcuts:
 
+The line tool also creates arrows and endpoint markers. Use the dropdown beside the line button to set the start and end independently to none, an arrow, or a solid circle.
+
 - `Alt+P`: Freehand pen
 - `Alt+L`: Line
-- `Alt+A`: Arrow
 - `Alt+R`: Rectangle
 - `Alt+T`: Text
 - `Alt+M`: Mosaic

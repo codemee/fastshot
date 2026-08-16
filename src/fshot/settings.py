@@ -16,10 +16,15 @@ class CaptureMode(str, Enum):
 class Tool(str, Enum):
     PEN = "pen"
     LINE = "line"
-    ARROW = "arrow"
     RECTANGLE = "rectangle"
     TEXT = "text"
     MOSAIC = "mosaic"
+
+
+class LineEndStyle(str, Enum):
+    NONE = "none"
+    ARROW = "arrow"
+    CIRCLE = "circle"
 
 
 @dataclass
@@ -32,6 +37,8 @@ class CaptureSettings:
 class DrawingSettings:
     color: QColor
     line_width: int = 3
+    line_start_style: LineEndStyle = LineEndStyle.NONE
+    line_end_style: LineEndStyle = LineEndStyle.NONE
     font_family: str = "Segoe UI"
     font_size: int = 24
 

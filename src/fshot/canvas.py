@@ -6,7 +6,7 @@ from PySide6.QtCore import QPoint, QPointF, QRect, Qt, Signal
 from PySide6.QtGui import QColor, QCursor, QFont, QImage, QMouseEvent, QPainter, QPen, QPolygon, QPixmap
 from PySide6.QtWidgets import QInputDialog, QSizePolicy, QWidget
 
-from fshot.settings import DrawingSettings, Tool
+from fshot.settings import DrawingSettings, LineEndStyle, Tool
 
 CANVAS_PADDING = 14
 HANDLE_SIZE = 8
@@ -75,7 +75,7 @@ class ImageCanvas(QWidget):
         )
         painter.drawImage(target, self.image)
         self._draw_crop_handles(painter)
-        if self._start and self._preview and self.tool in {Tool.LINE, Tool.ARROW, Tool.RECTANGLE, Tool.MOSAIC}:
+        if self._start and self._preview and self.tool in {Tool.LINE, Tool.RECTANGLE, Tool.MOSAIC}:
             painter.setBrush(Qt.BrushStyle.NoBrush)
             rect = QRect(self._to_widget(self._start), self._to_widget(self._preview)).normalized()
             if self.tool == Tool.MOSAIC:
@@ -85,13 +85,12 @@ class ImageCanvas(QWidget):
                 pen.setCapStyle(Qt.PenCapStyle.RoundCap)
                 pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
                 painter.setPen(pen)
-                painter.drawLine(self._to_widget(self._start), self._to_widget(self._preview))
-            elif self.tool == Tool.ARROW:
-                pen = QPen(self.settings.color, max(1, int(self.settings.line_width * self.zoom)))
-                pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-                pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-                painter.setPen(pen)
-                self._draw_arrow(painter, self._to_widget(self._start), self._to_widget(self._preview), scaled=True)
+                self._draw_line(
+                    painter,
+                    self._to_widget(self._start),
+                    self._to_widget(self._preview),
+                    scaled=True,
+                )
             else:
                 pen = QPen(self.settings.color, max(1, int(self.settings.line_width * self.zoom)))
                 pen.setCapStyle(Qt.PenCapStyle.RoundCap)
@@ -157,13 +156,7 @@ class ImageCanvas(QWidget):
             painter = QPainter(self.image)
             painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
             painter.setPen(self._pen())
-            painter.drawLine(self._start, end)
-            self.changed.emit()
-        elif self.tool == Tool.ARROW:
-            painter = QPainter(self.image)
-            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-            painter.setPen(self._pen())
-            self._draw_arrow(painter, self._start, end, scaled=False)
+            self._draw_line(painter, self._start, end, scaled=False)
             self.changed.emit()
         elif self.tool == Tool.RECTANGLE:
             painter = QPainter(self.image)
@@ -214,24 +207,46 @@ class ImageCanvas(QWidget):
         pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
         return pen
 
-    def _draw_arrow(self, painter: QPainter, start: QPoint, end: QPoint, scaled: bool) -> None:
+    def _draw_line(self, painter: QPainter, start: QPoint, end: QPoint, scaled: bool) -> None:
         painter.drawLine(start, end)
-        dx = end.x() - start.x()
-        dy = end.y() - start.y()
+        self._draw_line_end(painter, start, end, self.settings.line_start_style, scaled)
+        self._draw_line_end(painter, end, start, self.settings.line_end_style, scaled)
+
+    def _draw_line_end(
+        self,
+        painter: QPainter,
+        tip: QPoint,
+        opposite: QPoint,
+        style: LineEndStyle,
+        scaled: bool,
+    ) -> None:
+        if style is LineEndStyle.NONE:
+            return
+
+        scale = self.zoom if scaled else 1.0
+        if style is LineEndStyle.CIRCLE:
+            radius = max(4.0, self.settings.line_width * 1.75) * scale
+            painter.save()
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(self.settings.color)
+            painter.drawEllipse(QPointF(tip), radius, radius)
+            painter.restore()
+            return
+
+        dx = tip.x() - opposite.x()
+        dy = tip.y() - opposite.y()
         length = math.hypot(dx, dy)
         if length < 2:
             return
         angle = math.atan2(dy, dx)
-        head_len = max(10, self.settings.line_width * 5)
-        if scaled:
-            head_len *= self.zoom
+        head_len = max(10, self.settings.line_width * 5) * scale
         head_angle = math.radians(28)
         for sign in (-1, 1):
             point = QPointF(
-                end.x() - head_len * math.cos(angle + sign * head_angle),
-                end.y() - head_len * math.sin(angle + sign * head_angle),
+                tip.x() - head_len * math.cos(angle + sign * head_angle),
+                tip.y() - head_len * math.sin(angle + sign * head_angle),
             )
-            painter.drawLine(end, point.toPoint())
+            painter.drawLine(tip, point.toPoint())
 
     def _draw_selection_rect(self, painter: QPainter, rect: QRect) -> None:
         painter.setBrush(Qt.BrushStyle.NoBrush)
@@ -349,8 +364,6 @@ class ImageCanvas(QWidget):
             self.setCursor(Qt.CursorShape.CrossCursor)
         elif self.tool == Tool.TEXT:
             self.setCursor(Qt.CursorShape.IBeamCursor)
-        elif self.tool == Tool.ARROW:
-            self.setCursor(Qt.CursorShape.ArrowCursor)
         elif self.tool == Tool.PEN:
             self.setCursor(_pencil_cursor())
         else:
