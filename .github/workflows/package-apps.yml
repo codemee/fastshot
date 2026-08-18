@@ -8,6 +8,9 @@ on:
       ref:
         description: Git tag or ref to package
         required: true
+      release_tag:
+        description: Existing GitHub Release tag to receive the files (defaults to ref)
+        required: false
       attach_to_release:
         description: Attach artifacts to an existing matching GitHub Release
         required: true
@@ -80,5 +83,5 @@ jobs:
       - name: Attach files to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.ref }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag || inputs.ref }}
         run: gh release upload "$RELEASE_TAG" release-assets/* --clobber --repo "${{ github.repository }}"

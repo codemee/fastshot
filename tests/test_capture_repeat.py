@@ -230,6 +230,10 @@ def test_windows_menu_mode_is_cancelled_for_menu_owner_and_foreground(monkeypatc
         "fshot.capture.windll",
         SimpleNamespace(user32=SimpleNamespace(GetGUIThreadInfo=get_gui_thread_info)),
     )
+    monkeypatch.setattr(
+        "fshot.capture.win32con",
+        SimpleNamespace(WM_CANCELMODE=0x001F, SMTO_ABORTIFHUNG=0x0002),
+    )
 
     _cancel_windows_menu_mode()
 
