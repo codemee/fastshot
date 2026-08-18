@@ -12,7 +12,16 @@ FShot is a Python desktop screenshot utility focused on global shortcuts, a pers
 
 ## Quick Start
 
-Users who do not want Python can download a single Windows x64 EXE or an arm64 DMG for an Apple Silicon Mac from [GitHub Releases](https://github.com/codemee/fshot/releases). These personal-project builds do not have a trusted publisher signature. Windows may show a SmartScreen warning, and macOS requires an explicit Open Anyway approval in Privacy & Security. Read the [Windows installation guide](docs/install-windows.en.md) or [macOS installation guide](docs/install-macos.en.md) first.
+### Desktop app
+
+For regular use, download a build from [GitHub Releases](https://github.com/codemee/fshot/releases):
+
+- Windows 10/11 x64: a portable `FShot-<version>-windows-x64.exe` that does not require Python.
+- Apple Silicon Mac: `FShot-<version>-macos-arm64.dmg`; open it and drag `FShot.app` to Applications. Intel Macs are not supported.
+
+These personal-project builds have no trusted Authenticode or Apple Developer ID signature and are not notarized by Apple. Windows may show SmartScreen; on first launch, macOS requires **Open Anyway** under System Settings → Privacy & Security, followed by Screen Recording and Accessibility permissions. Use `SHA256SUMS.txt` from the same release to verify the download. See the [Windows installation guide](docs/install-windows.en.md) or [macOS installation guide](docs/install-macos.en.md) for complete steps.
+
+### Run from PyPI
 
 FShot is available from [PyPI](https://pypi.org/project/fshot/). Run the latest stable release without installing it:
 
@@ -65,7 +74,7 @@ Images can also be added by drag-and-drop or clipboard paste. A dropped image op
 - `Ctrl+Shift+F`: Capture the full screen
 - `Ctrl+Shift+W`: Select and capture a window or control
 
-macOS uses the same `Ctrl+Shift` letter combinations. On first use, grant Screen Recording and Accessibility permissions when prompted. FShot currently runs through `uv`/`uvx` rather than as a packaged macOS app, so the permission entry in System Settings usually belongs to the app that launched the command, such as Terminal, iTerm2, or an IDE. After granting access, fully quit and reopen that host app, then run FShot again.
+macOS uses the same `Ctrl+Shift` letter combinations. Grant the packaged `FShot.app` both Screen Recording and Accessibility access. When running through `uv`/`uvx`, the permission entry usually belongs to the host that launched the command, such as Terminal, iTerm2, or an IDE. After granting access, fully quit and reopen FShot or that host app.
 
 Editor shortcuts:
 
@@ -99,3 +108,16 @@ uv run python -m compileall src tests
 ```
 
 If FShot is running, `compileall` may occasionally fail because an executable or `__pycache__` file is locked. Stop FShot and rerun the command.
+
+## Desktop Packaging
+
+FShot uses PyInstaller and must be built on the target operating system. A Windows runner produces the single x64 EXE; an Apple Silicon macOS runner produces an arm64 DMG containing `FShot.app` and an Applications shortcut. Intel Mac builds are not produced.
+
+Build locally:
+
+```powershell
+uv sync
+uv run python scripts/build_app.py
+```
+
+Outputs are written to `dist/`. Publishing a GitHub Release automatically runs tests and packaging on native Windows and macOS runners, then attaches the EXE, DMG, and `SHA256SUMS.txt` through the `Package desktop apps` workflow. The workflow uses no Authenticode, Apple Developer ID, or notarization credentials, so the resulting files retain the SmartScreen and Gatekeeper behavior described above. See [Desktop Packaging](docs/packaging.md) for development and manual recovery details.

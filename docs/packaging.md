@@ -15,6 +15,6 @@ Generated icons and Windows version resources live under `build/package-assets` 
 
 ## GitHub Actions
 
-Publishing a GitHub Release automatically builds Windows x64 and macOS arm64 packages, attaches them to that release, and uploads `SHA256SUMS.txt`. **Package desktop apps** can also be run manually with an existing tag or ref; enable **Attach artifacts to an existing matching GitHub Release** only when the supplied ref names an existing release tag.
+Publishing a GitHub Release automatically builds Windows x64 and macOS arm64 packages, attaches them to that release, and uploads `SHA256SUMS.txt`. **Package desktop apps** can also be run manually: **ref** selects the source commit, while the optional **release_tag** selects an existing GitHub Release that receives the files. Enable **attach_to_release** only when that release exists; if **release_tag** is omitted, it defaults to **ref**.
 
 The workflow does not use Authenticode, Apple Developer ID, or notarization credentials. See the platform installation guides for the resulting SmartScreen and Gatekeeper experience.

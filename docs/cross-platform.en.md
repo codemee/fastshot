@@ -33,7 +33,7 @@ Image drag/drop and paste use Qt `QMimeData`, `QUrl`, and clipboard APIs. On mac
 - Current `NSCursor` image, hotspot, and position are included best-effort.
 - Shared Qt tray, editor, clipboard, and save workflows are used.
 
-First launch requests Accessibility permission; first capture requests Screen Recording permission. The project currently runs through `uv`/`uvx` and is not packaged as a standalone macOS app, so the entries under **System Settings → Privacy & Security → Accessibility / Screen Recording** usually belong to the app that launched the `uv` command rather than to FShot. This is commonly Terminal, iTerm2, Warp, or an IDE host. Enable both permissions for the app that actually launches FShot; after changing them, fully quit and reopen that host app, then run FShot again. Without Accessibility permission, global shortcuts and control selection may be unavailable, while window hit testing falls back best-effort.
+First launch requests Accessibility permission; first capture requests Screen Recording permission. For a DMG installation, enable both permissions for `FShot.app` under **System Settings → Privacy & Security → Accessibility / Screen Recording**. When running through `uv`/`uvx`, the entries usually belong to Terminal, iTerm2, Warp, or the IDE host that launched the command. After changing access, fully quit and reopen FShot or that host app. Without Accessibility permission, global shortcuts and control selection may be unavailable, while window hit testing falls back best-effort.
 
 ### Linux
 

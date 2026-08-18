@@ -12,7 +12,16 @@ FShot 是以 Python 實作的桌面截圖工具，主打全域快捷鍵、系統
 
 ## Quick Start
 
-不使用 Python 的一般使用者，可從 [GitHub Releases](https://github.com/codemee/fshot/releases) 下載 Windows x64 單一 EXE 或 Apple Silicon Mac 使用的 arm64 DMG。這些個人專案版本沒有可信任的發行者簽章；Windows 可能顯示 SmartScreen 警告，macOS 需要在「隱私權與安全性」中選擇仍要打開。請先閱讀 [Windows 安裝說明](docs/install-windows.md) 或 [macOS 安裝說明](docs/install-macos.md)。
+### 桌面應用程式
+
+一般使用者建議從 [GitHub Releases](https://github.com/codemee/fshot/releases) 下載：
+
+- Windows 10/11 x64：單一可攜式 `FShot-<版本>-windows-x64.exe`，不需要 Python。
+- Apple Silicon Mac：`FShot-<版本>-macos-arm64.dmg`，開啟後將 `FShot.app` 拖入 Applications；不支援 Intel Mac。
+
+這些個人專案版本沒有 Authenticode 或 Apple Developer ID 等可信任發行者簽章，也未經 Apple notarization。Windows 可能顯示 SmartScreen 警告；macOS 第一次開啟時需到「系統設定 → 隱私權與安全性」選擇「仍要打開」，並授予「螢幕錄製」與「輔助使用」權限。下載後可用同一個 Release 內的 `SHA256SUMS.txt` 核對檔案。完整步驟請閱讀 [Windows 安裝說明](docs/install-windows.md) 或 [macOS 安裝說明](docs/install-macos.md)。
+
+### 從 PyPI 執行
 
 FShot 可從 [PyPI](https://pypi.org/project/fshot/) 安裝。不需安裝即可使用 `uvx` 執行最新正式版本：
 
@@ -67,7 +76,7 @@ uv run fshot
 - `Ctrl+Shift+F`: 擷取全螢幕
 - `Ctrl+Shift+W`: 選取視窗或控制項後擷取
 
-macOS 使用相同的 `Ctrl+Shift` 字母組合。首次執行時，請依系統提示授予「螢幕錄製」與「輔助使用」權限。目前 FShot 是透過 `uv`／`uvx` 執行，而非封裝成獨立的 macOS App，因此系統設定中的授權對象通常是啟動指令所在的 App，例如「終端機」、iTerm2 或 IDE。授權後請完全結束並重新開啟該 App，再重新執行 FShot。
+macOS 使用相同的 `Ctrl+Shift` 字母組合。獨立 App 請授權 `FShot.app`；透過 `uv`／`uvx` 執行時，系統設定中的授權對象通常是啟動指令所在的 App，例如「終端機」、iTerm2 或 IDE。授權後請完全結束並重新開啟 FShot 或該宿主 App。
 
 編輯工具快捷鍵：
 
@@ -99,3 +108,16 @@ uv run python -m compileall src tests
 ```
 
 若 FShot 正在執行，`compileall` 有時會因 `__pycache__` 或 executable 被鎖而失敗；先關閉或停止 `fshot.exe` 後再重跑。
+
+## 桌面應用程式打包
+
+FShot 使用 PyInstaller，而且必須在目標作業系統上建置；Windows runner 產生 x64 單一 EXE，Apple Silicon macOS runner 產生包含 `FShot.app` 與 Applications 捷徑的 arm64 DMG。專案不建立 Intel Mac 版本。
+
+本機建置：
+
+```powershell
+uv sync
+uv run python scripts/build_app.py
+```
+
+輸出位於 `dist/`。發布 GitHub Release 後，`Package desktop apps` 工作流程會自動在 Windows 與 macOS 原生 runner 執行測試和打包，再將 EXE、DMG 與 `SHA256SUMS.txt` 附加至該 Release。打包流程不使用 Authenticode、Apple Developer ID 或 notarization 憑證，因此發行檔仍會遇到前述 SmartScreen／Gatekeeper 提示。開發與手動補發細節請參閱 [Desktop Packaging](docs/packaging.md)。
