@@ -1,6 +1,6 @@
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QImage, QKeySequence
-from PySide6.QtWidgets import QScrollArea, QToolBar, QToolButton, QWidget
+from PySide6.QtWidgets import QScrollArea, QStyleOptionViewItem, QToolBar, QToolButton, QWidget
 
 from fshot import __version__
 from fshot.canvas import CANVAS_PADDING
@@ -66,6 +66,14 @@ def test_line_tool_has_independent_endpoint_style_menu(qt_app):
     assert window.line_end_button.menu() is window.line_end_menu
     assert window.line_start_combo.count() == 3
     assert window.line_end_combo.count() == 3
+    for combo in (window.line_start_combo, window.line_end_combo):
+        assert combo.iconSize() == QSize(64, 24)
+        assert combo.view().iconSize() == combo.iconSize()
+        hint = combo.itemDelegate().sizeHint(
+            QStyleOptionViewItem(), combo.model().index(0, 0)
+        )
+        assert hint.width() >= 72
+        assert hint.height() >= 32
 
     original_icon = window.line_action.icon().cacheKey()
     window.line_start_combo.setCurrentIndex(

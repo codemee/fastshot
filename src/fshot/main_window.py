@@ -6,7 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from PIL import Image
-from PySide6.QtCore import QPoint, QSettings, QSize, Qt, Signal
+from PySide6.QtCore import QPoint, QRect, QSettings, QSize, Qt, Signal
 from PySide6.QtGui import QAction, QActionGroup, QColor, QIcon, QKeySequence, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QAbstractButton,
@@ -26,6 +26,8 @@ from PySide6.QtWidgets import (
     QSlider,
     QSpinBox,
     QStyle,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
     QTabBar,
     QTabWidget,
     QToolButton,
@@ -62,6 +64,40 @@ LAST_SAVE_DIRECTORY_KEY = "files/last_save_directory"
 TOOLBAR_ICON_SIZE = QSize(20, 20)
 TOOLBAR_BUTTON_SIZE = QSize(34, 34)
 TOOLBAR_DROPDOWN_SIZE = QSize(20, 34)
+LINE_END_STYLE_ICON_SIZE = QSize(64, 24)
+
+
+class LineEndStyleDelegate(QStyledItemDelegate):
+    """Draw full-size line previews in combo popups on every platform."""
+
+    _PADDING = 4
+
+    def sizeHint(self, option: QStyleOptionViewItem, index) -> QSize:
+        hint = super().sizeHint(option, index)
+        return QSize(
+            max(hint.width(), LINE_END_STYLE_ICON_SIZE.width() + self._PADDING * 2),
+            max(hint.height(), LINE_END_STYLE_ICON_SIZE.height() + self._PADDING * 2),
+        )
+
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index) -> None:
+        preview_option = QStyleOptionViewItem(option)
+        self.initStyleOption(preview_option, index)
+        preview_option.icon = QIcon()
+        preview_option.text = ""
+        style = preview_option.widget.style()
+        style.drawControl(QStyle.ControlElement.CE_ItemViewItem, preview_option, painter)
+
+        target = QRect(
+            preview_option.rect.left() + self._PADDING,
+            preview_option.rect.center().y() - LINE_END_STYLE_ICON_SIZE.height() // 2,
+            LINE_END_STYLE_ICON_SIZE.width(),
+            LINE_END_STYLE_ICON_SIZE.height(),
+        )
+        icon = index.data(Qt.ItemDataRole.DecorationRole)
+        if not isinstance(icon, QIcon) or icon.isNull():
+            return
+        pixmap = icon.pixmap(LINE_END_STYLE_ICON_SIZE)
+        painter.drawPixmap(target, pixmap, pixmap.rect())
 
 
 def _align_scrollbars_to_image(area: QScrollArea) -> None:
@@ -567,7 +603,11 @@ class EditorWindow(QMainWindow):
         self.line_start_combo.setObjectName("lineStartStyle")
         self.line_end_combo.setObjectName("lineEndStyle")
         for combo in (self.line_start_combo, self.line_end_combo):
-            combo.setIconSize(QSize(64, 24))
+            combo.setIconSize(LINE_END_STYLE_ICON_SIZE)
+            combo.view().setIconSize(LINE_END_STYLE_ICON_SIZE)
+            # The macOS style caps popup decorations at its native small-icon
+            # size, so draw these wide previews explicitly in the item view.
+            combo.setItemDelegate(LineEndStyleDelegate(combo))
             combo.setMinimumWidth(88)
         layout.addWidget(self.line_start_label, 0, 0)
         layout.addWidget(self.line_start_combo, 0, 1)
