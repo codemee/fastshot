@@ -56,9 +56,16 @@ Linux is not currently a primary target. X11 and Wayland differ substantially in
 ## Automatic Updates
 
 - Automatic installation is available only for `uv tool install fshot`; `uvx`, source checkouts, and ordinary virtual environments are conservatively reported as unsupported.
+- Frozen Windows EXE and macOS App builds check the latest GitHub Release daily. When a new version is available they open the download page for manual verification and replacement; they never overwrite an unsigned app automatically.
 - Windows uses a hidden Windows PowerShell helper, while macOS/Linux use a detached `/bin/sh` helper. The helper only waits for FShot to exit normally; it cancels on timeout and never force-terminates the app.
 - uv performs the actual version-qualified `uv tool upgrade`; FShot never mutates the tool environment directly.
 - The current capture must finish first, and unsaved tabs require confirmation. After restart, FShot verifies the installed package metadata and reports the actual result.
+
+## Packaged Applications
+
+- Releases provide a single Windows x64 EXE and an Apple Silicon arm64 DMG only. Intel Macs are not supported.
+- Neither platform receives a trusted publisher signature. Windows can show SmartScreen, while macOS requires a Gatekeeper Open Anyway approval; see the platform installation guides.
+- The macOS DMG contains `FShot.app` and an Applications shortcut. Without Developer ID signing or notarization, replacement builds can require another Gatekeeper approval and renewed Screen Recording or Accessibility permissions.
 
 ## Manual Acceptance Checklist
 

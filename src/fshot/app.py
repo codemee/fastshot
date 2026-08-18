@@ -13,9 +13,10 @@ from PySide6.QtCore import (
     QSettings,
     QStandardPaths,
     QTimer,
+    QUrl,
     Signal,
 )
-from PySide6.QtGui import QAction
+from PySide6.QtGui import QAction, QDesktopServices
 from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon
 from uv_tool_updater import (
     InstallStatus,
@@ -32,7 +33,7 @@ from fshot.i18n import LanguageManager
 from fshot.main_window import EditorWindow
 from fshot.settings import CaptureMode
 from fshot.theme import ThemeManager
-from fshot.updates import UpdateManager
+from fshot.updates import GITHUB_RELEASES_URL, GitHubReleaseUpdater, UpdateManager
 
 if sys.platform == "win32":
     import win32con
@@ -147,21 +148,16 @@ class FShotApplication(QObject):
         *,
         updater: Updater | None = None,
         update_settings: QSettings | None = None,
+        packaged: bool | None = None,
     ) -> None:
         super().__init__()
         self.app = app
         self.app.setApplicationName("FShot")
         self.app.setOrganizationName("FShot")
         self.app.setQuitOnLastWindowClosed(False)
+        self.packaged = bool(getattr(sys, "frozen", False)) if packaged is None else packaged
         self.update_settings = update_settings if update_settings is not None else QSettings()
-        self.updater = updater or Updater(
-            package_name="fshot",
-            command_name="fshot",
-            state_dir=Path(
-                QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppLocalDataLocation)
-            )
-            / "updates",
-        )
+        self.updater = updater or self._default_updater()
         self.update_manager = UpdateManager(self.updater, self.update_settings)
         self.update_manager.checkFinished.connect(self._update_check_finished)
         self.update_manager.checkFailed.connect(self._update_check_failed)
@@ -187,9 +183,22 @@ class FShotApplication(QObject):
     def run(self) -> int:
         self.tray.show()
         self.window.hide()
-        QTimer.singleShot(0, self._show_pending_update_result)
+        if not self.packaged:
+            QTimer.singleShot(0, self._show_pending_update_result)
         QTimer.singleShot(5000, self._start_automatic_update_check)
         return self.app.exec()
+
+    def _default_updater(self):
+        if self.packaged:
+            return GitHubReleaseUpdater()
+        return Updater(
+            package_name="fshot",
+            command_name="fshot",
+            state_dir=Path(
+                QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppLocalDataLocation)
+            )
+            / "updates",
+        )
 
     def show_window(self) -> None:
         _activate_window(self.window)
@@ -366,7 +375,8 @@ class FShotApplication(QObject):
             )
         )
         update_button = dialog.addButton(
-            self.language_manager.text("update_now"), QMessageBox.ButtonRole.AcceptRole
+            self.language_manager.text("update_download" if self.packaged else "update_now"),
+            QMessageBox.ButtonRole.AcceptRole,
         )
         later_button = dialog.addButton(
             self.language_manager.text("update_later"), QMessageBox.ButtonRole.RejectRole
@@ -380,9 +390,15 @@ class FShotApplication(QObject):
         if clicked is skip_button:
             self.update_manager.skip_version(latest)
         elif clicked is update_button:
-            self._install_update(release)
+            if self.packaged:
+                self._open_packaged_release(release)
+            else:
+                self._install_update(release)
         elif clicked is later_button:
             return
+
+    def _open_packaged_release(self, release: ReleaseInfo) -> None:
+        QDesktopServices.openUrl(QUrl(release.release_url or GITHUB_RELEASES_URL))
 
     def _install_update(self, release: ReleaseInfo) -> None:
         if self._capture_in_progress:
@@ -579,6 +595,11 @@ class FShotApplication(QObject):
 
 
 def main() -> int:
+    if "--version" in sys.argv:
+        from fshot import __version__
+
+        print(f"FShot {__version__}")
+        return 0
     app = QApplication(sys.argv)
     controller = FShotApplication(app)
     return controller.run()

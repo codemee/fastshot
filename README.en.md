@@ -12,6 +12,8 @@ FShot is a Python desktop screenshot utility focused on global shortcuts, a pers
 
 ## Quick Start
 
+Users who do not want Python can download a single Windows x64 EXE or an arm64 DMG for an Apple Silicon Mac from [GitHub Releases](https://github.com/codemee/fshot/releases). These personal-project builds do not have a trusted publisher signature. Windows may show a SmartScreen warning, and macOS requires an explicit Open Anyway approval in Privacy & Security. Read the [Windows installation guide](docs/install-windows.en.md) or [macOS installation guide](docs/install-macos.en.md) first.
+
 FShot is available from [PyPI](https://pypi.org/project/fshot/). Run the latest stable release without installing it:
 
 ```powershell
@@ -33,7 +35,7 @@ After installation, run the app with `fshot`. Upgrade to the latest PyPI release
 uv tool upgrade fshot
 ```
 
-When installed with `uv tool install`, FShot checks PyPI in the background at most once per day. The tray menu can check manually or disable automatic checks. When an update is available, you can update and restart, postpone it, or skip that release. FShot asks before discarding any unsaved screenshots. `uvx`, source checkouts, and other non-uv-tool installations receive manual guidance and are never modified automatically.
+When installed with `uv tool install`, FShot checks PyPI in the background at most once per day. The tray menu can check manually or disable automatic checks. When an update is available, you can update and restart, postpone it, or skip that release. FShot asks before discarding any unsaved screenshots. Packaged apps check GitHub Releases and open the download page instead of replacing an unsigned EXE or App. `uvx` and source checkouts receive manual update guidance.
 
 Install the latest development version directly from GitHub's `main` branch:
 

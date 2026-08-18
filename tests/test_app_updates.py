@@ -80,3 +80,31 @@ def test_declined_unsaved_changes_cancel_update(qt_app, tmp_path, monkeypatch):
 
     assert updater.prepare_calls == []
     assert updater.session.host_pid is None
+
+
+def test_packaged_app_uses_github_release_checker(qt_app, tmp_path, monkeypatch):
+    from fshot.updates import GitHubReleaseUpdater
+
+    monkeypatch.setattr(FShotApplication, "_register_hotkeys", lambda self: None)
+    settings = QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat)
+
+    controller = FShotApplication(qt_app, update_settings=settings, packaged=True)
+
+    assert isinstance(controller.updater, GitHubReleaseUpdater)
+
+
+def test_packaged_update_opens_release_page(qt_app, tmp_path, monkeypatch):
+    import fshot.app as app_module
+
+    controller, _updater = _controller(qt_app, tmp_path, monkeypatch)
+    release = ReleaseInfo(
+        package_name="fshot",
+        version=Version("1.0.0"),
+        release_url="https://github.com/codemee/fshot/releases/tag/v1.0.0",
+    )
+    opened = []
+    monkeypatch.setattr(app_module.QDesktopServices, "openUrl", lambda url: opened.append(url))
+
+    controller._open_packaged_release(release)
+
+    assert opened[0].toString() == release.release_url

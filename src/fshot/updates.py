@@ -1,14 +1,69 @@
 from __future__ import annotations
 
+import json
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
+from urllib.request import Request, urlopen
 
+from packaging.version import Version
 from PySide6.QtCore import QObject, QRunnable, QSettings, QThreadPool, Signal, Slot
-from uv_tool_updater import UpdateCheck, Updater, check_is_due
+from uv_tool_updater import InstalledTool, ReleaseInfo, UpdateCheck, Updater, UpdateStatus, check_is_due
+
+from fshot import __version__
 
 AUTOMATIC_CHECKS_KEY = "updates/check_automatically"
 LAST_CHECKED_AT_KEY = "updates/last_checked_at"
 SKIPPED_VERSION_KEY = "updates/skipped_version"
 UPDATE_CHECK_INTERVAL_SECONDS = 24 * 60 * 60
+GITHUB_LATEST_RELEASE_API = "https://api.github.com/repos/codemee/fshot/releases/latest"
+GITHUB_RELEASES_URL = "https://github.com/codemee/fshot/releases/latest"
+
+
+class GitHubReleaseUpdater:
+    """Read-only update checker for frozen EXE/App distributions."""
+
+    def __init__(self, current_version: str = __version__) -> None:
+        self.current_version = Version(current_version)
+
+    def check(self, timeout: float = 5.0, allow_prereleases: bool = False) -> UpdateCheck:
+        del allow_prereleases
+        request = Request(
+            GITHUB_LATEST_RELEASE_API,
+            headers={
+                "Accept": "application/vnd.github+json",
+                "User-Agent": f"FShot/{self.current_version}",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+        )
+        with urlopen(request, timeout=timeout) as response:
+            payload = json.load(response)
+        latest = Version(str(payload["tag_name"]).removeprefix("v"))
+        installed = InstalledTool(
+            package_name="fshot",
+            command_name="fshot",
+            current_version=self.current_version,
+            executable_path=Path(sys.executable),
+            python_prefix=Path(sys.prefix),
+            uv_path=None,
+            uv_tool_dir=None,
+            managed_by_uv=False,
+        )
+        release = ReleaseInfo(
+            package_name="fshot",
+            version=latest,
+            release_url=str(payload.get("html_url") or GITHUB_RELEASES_URL),
+            prerelease=bool(payload.get("prerelease", False)),
+        )
+        status = (
+            UpdateStatus.UPDATE_AVAILABLE
+            if latest > self.current_version
+            else UpdateStatus.UP_TO_DATE
+        )
+        return UpdateCheck(status=status, installed=installed, release=release)
+
+    def consume_latest_result(self):
+        return None
 
 
 class _UpdateCheckSignals(QObject):

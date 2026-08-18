@@ -22,6 +22,12 @@
   - 在 Qt thread pool 執行 `uv-tool-updater` 的同步網路檢查，避免阻塞 UI thread。
   - 使用 `QSettings` 保存自動檢查開關、上次檢查時間及略過版本；背景檢查最多每日一次，手動檢查不受間隔限制。
   - 不直接修改 uv tool environment；安裝、等待程序退出與重新啟動由 `uv-tool-updater` 協調。
+  - Frozen EXE／App 改查 GitHub 最新 Release；發現新版時只開啟下載頁面，不自動覆寫未簽章應用程式。
+
+- `packaging/fshot.spec`、`scripts/build_app.py`
+  - 使用 PyInstaller 產生 Windows x64 單一 EXE，以及 Apple Silicon macOS App。
+  - macOS App 會放入含 Applications 捷徑的 arm64 DMG；Windows 版本資訊、ICO 與 macOS ICNS 在建置時由程式 metadata 及現有相機圖示產生。
+  - GitHub Release 發布後，由 `package-apps.yml` 自動在原生 runner 建置、驗證並附加 EXE、DMG 與 SHA-256；不支援 Intel Mac。
 
 - `capture.py`
   - 管理所有截圖模式：全螢幕、矩形區域、焦點視窗、選取視窗/控制項。

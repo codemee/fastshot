@@ -80,9 +80,16 @@ Linux 尚未作為主要目標。Wayland/X11 差異很大，尤其是全域快�
 ## Automatic Updates
 
 - 僅 `uv tool install fshot` 安裝可自動更新；`uvx`、原始碼 checkout 與一般 virtualenv 會保守地顯示為不支援。
+- Frozen Windows EXE 與 macOS App 每日檢查 GitHub 最新 Release；發現新版時開啟下載頁面，由使用者驗證後手動替換，不自動覆寫未簽章程式。
 - Windows 使用隱藏的 Windows PowerShell helper，macOS/Linux 使用獨立的 `/bin/sh` helper。Helper 只等待 FShot 正常退出，逾時會取消，不會強制終止程式。
 - 實際安裝由 uv 執行帶有已驗證目標版本的 `uv tool upgrade`；FShot 不直接修改 tool environment。
 - 更新前必須先完成目前的擷取，且有未儲存頁籤時會要求確認。更新後重新啟動的 FShot 會從套件 metadata 驗證實際版本並顯示結果。
+
+## Packaged Applications
+
+- Windows 只發布 x64 單一 EXE；macOS 只發布 Apple Silicon arm64 DMG，不支援 Intel Mac。
+- 兩平台皆不套用可信任發行者簽章。Windows 可能顯示 SmartScreen，macOS 需要 Gatekeeper「仍要打開」，詳細流程見各平台安裝文件。
+- macOS DMG 內含 `FShot.app` 與 Applications 捷徑。因 App 沒有 Developer ID 簽章或 notarization，更新後可能需要重新確認 Gatekeeper、螢幕錄製與輔助使用權限。
 
 ## Manual Acceptance Checklist
 

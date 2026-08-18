@@ -1,10 +1,12 @@
+import io
+import json
 from datetime import datetime, timedelta, timezone
 
 from packaging.version import Version
 from PySide6.QtCore import QEventLoop, QSettings, QTimer
 from uv_tool_updater import InstalledTool, ReleaseInfo, UpdateCheck, UpdateStatus
 
-from fshot.updates import LAST_CHECKED_AT_KEY, UpdateManager
+from fshot.updates import GitHubReleaseUpdater, LAST_CHECKED_AT_KEY, UpdateManager
 
 
 class FakeUpdater:
@@ -99,3 +101,51 @@ def test_unexpected_update_check_failure_is_reported(qt_app, tmp_path):
 
     assert received == [("offline", True)]
     assert not manager.is_checking
+
+
+class _JsonResponse(io.BytesIO):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        self.close()
+
+
+def test_packaged_update_checker_uses_latest_github_release(monkeypatch):
+    import fshot.updates as updates
+
+    payload = {
+        "tag_name": "v1.2.0",
+        "html_url": "https://github.com/codemee/fshot/releases/tag/v1.2.0",
+        "prerelease": False,
+    }
+    monkeypatch.setattr(
+        updates,
+        "urlopen",
+        lambda _request, timeout: _JsonResponse(json.dumps(payload).encode()),
+    )
+
+    check = GitHubReleaseUpdater("1.1.0").check()
+
+    assert check.status is UpdateStatus.UPDATE_AVAILABLE
+    assert str(check.installed.current_version) == "1.1.0"
+    assert str(check.release.version) == "1.2.0"
+    assert check.release.release_url == payload["html_url"]
+
+
+def test_packaged_update_checker_reports_current_release(monkeypatch):
+    import fshot.updates as updates
+
+    payload = {
+        "tag_name": "v1.2.0",
+        "html_url": "https://github.com/codemee/fshot/releases/tag/v1.2.0",
+    }
+    monkeypatch.setattr(
+        updates,
+        "urlopen",
+        lambda _request, timeout: _JsonResponse(json.dumps(payload).encode()),
+    )
+
+    check = GitHubReleaseUpdater("1.2.0").check()
+
+    assert check.status is UpdateStatus.UP_TO_DATE

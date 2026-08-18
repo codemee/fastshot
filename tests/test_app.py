@@ -1,6 +1,14 @@
 from types import SimpleNamespace
 
-from fshot.app import _activate_window
+from fshot import __version__
+from fshot.app import _activate_window, main
+
+
+def test_version_flag_exits_without_starting_gui(monkeypatch, capsys):
+    monkeypatch.setattr("fshot.app.sys.argv", ["fshot", "--version"])
+
+    assert main() == 0
+    assert capsys.readouterr().out.strip() == f"FShot {__version__}"
 
 
 def test_activate_window_uses_native_foreground_calls_on_windows(qt_app, monkeypatch):

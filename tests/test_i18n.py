@@ -114,8 +114,10 @@ def test_update_messages_are_translated(tmp_path):
     manager = LanguageManager(settings, QLocale("en_US"))
 
     assert manager.text("check_updates") == "Check for updates..."
+    assert manager.text("update_download") == "Open download page"
 
     manager.set_mode(LanguageMode.ZH_TW)
 
     assert manager.text("check_updates") == "檢查更新…"
+    assert manager.text("update_download") == "開啟下載頁面"
     assert "1.1.0" in manager.text("update_available", current="1.0.0", latest="1.1.0")
